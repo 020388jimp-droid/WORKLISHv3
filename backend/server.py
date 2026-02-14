@@ -221,22 +221,31 @@ async def get_me(current_user: dict = Depends(get_current_user)):
 @api_router.post("/practice/text", response_model=TextPracticeResponse)
 async def practice_text(request: TextPracticeRequest, current_user: dict = Depends(get_current_user)):
     try:
+        # Determine feedback language
+        feedback_lang = request.feedback_language
+        if feedback_lang == "es":
+            tips_instruction = "Write all tips and feedback in SPANISH (español), but keep the corrected text in English."
+        else:
+            tips_instruction = "Write all tips and feedback in English."
+        
         chat = LlmChat(
             api_key=emergent_key,
             session_id=f"text-{current_user['id']}-{uuid.uuid4()}",
-            system_message="""You are a professional English business writing coach. Your role is to:
+            system_message=f"""You are a professional English business writing coach. Your role is to:
 1. Correct grammar, spelling, and punctuation errors
 2. Improve vocabulary for professional business contexts
 3. Suggest better phrasing for business communication
 4. Provide clear, actionable tips
 
+{tips_instruction}
+
 Always respond in JSON format with these exact keys:
-{
-    "corrected_text": "the corrected version of the text",
+{{
+    "corrected_text": "the corrected version of the text IN ENGLISH",
     "tips": ["tip1", "tip2", "tip3"],
     "grammar_score": 85,
     "vocabulary_score": 80
-}
+}}
 
 The scores should be 0-100. Focus on business English for the workplace."""
         ).with_model("gemini", "gemini-3-flash-preview")
