@@ -26,61 +26,63 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <div className="App">
-      <Toaster position="top-center" richColors />
-      <BrowserRouter>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/auth" element={<AuthPage />} />
-          
-          {/* Protected routes */}
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/practice/text" 
-            element={
-              <ProtectedRoute>
-                <TextPractice />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/practice/voice" 
-            element={
-              <ProtectedRoute>
-                <VoicePractice />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/practice/video" 
-            element={
-              <ProtectedRoute>
-                <VideoCall />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings" 
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <LanguageProvider>
+      <div className="App">
+        <Toaster position="top-center" richColors />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            
+            {/* Protected routes */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/practice/text" 
+              element={
+                <ProtectedRoute>
+                  <TextPractice />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/practice/voice" 
+              element={
+                <ProtectedRoute>
+                  <VoicePractice />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/practice/video" 
+              element={
+                <ProtectedRoute>
+                  <VideoCall />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </div>
+    </LanguageProvider>
   );
 }
 
