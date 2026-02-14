@@ -149,7 +149,8 @@ export const VideoCall = () => {
             role: msg.role === 'ai' ? 'assistant' : 'user',
             content: msg.content
           })),
-          scenario
+          scenario,
+          feedback_language: feedbackLang
         })
       });
 
