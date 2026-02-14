@@ -21,10 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Sidebar } from '../components/Sidebar';
 import { apiRequest, getToken, updateProgress } from '../lib/utils';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Toaster, toast } from 'sonner';
 
 export const VideoCall = () => {
   const navigate = useNavigate();
+  const { t, feedbackLang } = useLanguage();
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
