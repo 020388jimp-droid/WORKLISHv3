@@ -17,27 +17,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Progress } from '../components/ui/progress';
 import { Sidebar } from '../components/Sidebar';
 import { apiRequest, getToken, updateProgress } from '../lib/utils';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Toaster, toast } from 'sonner';
 
 export const TextPractice = () => {
   const navigate = useNavigate();
+  const { t, feedbackLang } = useLanguage();
   const [text, setText] = useState('');
   const [context, setContext] = useState('professional email');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
   const contexts = [
-    { value: 'professional email', label: 'Email Profesional' },
-    { value: 'business report', label: 'Reporte de Negocios' },
-    { value: 'presentation script', label: 'Script de Presentación' },
-    { value: 'meeting notes', label: 'Notas de Reunión' },
-    { value: 'job application', label: 'Aplicación de Trabajo' },
-    { value: 'LinkedIn post', label: 'Post de LinkedIn' }
+    { value: 'professional email', label: t('text.contexts.email') },
+    { value: 'business report', label: t('text.contexts.report') },
+    { value: 'presentation script', label: t('text.contexts.presentation') },
+    { value: 'meeting notes', label: t('text.contexts.meeting') },
+    { value: 'job application', label: t('text.contexts.job') },
+    { value: 'LinkedIn post', label: t('text.contexts.linkedin') }
   ];
 
   const handleSubmit = async () => {
     if (!text.trim()) {
-      toast.error('Por favor escribe algo para corregir');
+      toast.error(t('common.error'));
       return;
     }
 
