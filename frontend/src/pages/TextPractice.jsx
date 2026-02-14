@@ -54,7 +54,7 @@ export const TextPractice = () => {
     try {
       const response = await apiRequest('/practice/text', {
         method: 'POST',
-        body: JSON.stringify({ text, context })
+        body: JSON.stringify({ text, context, feedback_language: feedbackLang })
       });
 
       setResult(response);
@@ -63,9 +63,9 @@ export const TextPractice = () => {
       const avgScore = Math.round((response.grammar_score + response.vocabulary_score) / 2);
       updateProgress('text', avgScore);
       
-      toast.success('¡Análisis completado!');
+      toast.success(t('common.success'));
     } catch (error) {
-      toast.error(error.message || 'Error al analizar el texto');
+      toast.error(error.message || t('common.error'));
     } finally {
       setLoading(false);
     }
