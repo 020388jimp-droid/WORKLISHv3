@@ -291,21 +291,38 @@ async def practice_voice(
     context: str = Form("business conversation"),
     current_user: dict = Depends(get_current_user)
 ):
+    import tempfile
+    import os as temp_os
+    
     try:
         # Read audio file
         audio_content = await audio_file.read()
         
-        # Transcribe with Whisper
-        stt = OpenAISpeechToText(api_key=emergent_key)
+        # Get file extension from filename or default to webm
+        filename = audio_file.filename or "recording.webm"
+        ext = filename.split('.')[-1] if '.' in filename else 'webm'
         
-        transcription = await stt.transcribe(
-            file=io.BytesIO(audio_content),
-            model="whisper-1",
-            language="en",
-            response_format="json"
-        )
+        # Save to temp file with proper extension for Whisper
+        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as temp_file:
+            temp_file.write(audio_content)
+            temp_path = temp_file.name
         
-        transcribed_text = transcription.text
+        try:
+            # Transcribe with Whisper
+            stt = OpenAISpeechToText(api_key=emergent_key)
+            
+            with open(temp_path, "rb") as f:
+                transcription = await stt.transcribe(
+                    file=f,
+                    model="whisper-1",
+                    language="en",
+                    response_format="json"
+                )
+            
+            transcribed_text = transcription.text
+        finally:
+            # Clean up temp file
+            temp_os.unlink(temp_path)
         
         # Get pronunciation feedback with Gemini
         chat = LlmChat(
