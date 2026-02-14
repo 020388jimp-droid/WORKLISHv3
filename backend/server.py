@@ -403,6 +403,13 @@ async def video_call_practice(
             for msg in request.conversation_history[-6:]:  # Last 6 messages for context
                 history_text += f"{msg.role}: {msg.content}\n"
         
+        # Determine feedback language
+        feedback_lang = request.feedback_language
+        if feedback_lang == "es":
+            tips_instruction = "Write tips and corrections in SPANISH (español), but keep the ai_response in English as this is a practice conversation."
+        else:
+            tips_instruction = "Write tips, corrections, and ai_response all in English."
+        
         # Get AI response with corrections
         chat = LlmChat(
             api_key=emergent_key,
@@ -416,9 +423,11 @@ Your responses should:
 3. Subtly correct any English mistakes the user makes
 4. Provide tips for improvement
 
+{tips_instruction}
+
 Always respond in JSON format:
 {{
-    "ai_response": "your conversational response as the character",
+    "ai_response": "your conversational response as the character IN ENGLISH",
     "tips": ["tip about their English if needed"],
     "corrections": ["any corrections to what they said"]
 }}
