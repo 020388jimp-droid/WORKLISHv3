@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -8,18 +8,25 @@ import {
   Calendar,
   Shield,
   Trash2,
-  Download
+  Download,
+  Globe,
+  BookOpen
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Sidebar } from '../components/Sidebar';
+import { LevelSelector } from '../components/LevelSelector';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { getUser, getToken, getProgress, removeToken, removeUser } from '../lib/utils';
+import { useLanguage, LANGUAGE_LEVELS } from '../contexts/LanguageContext';
 import { Toaster, toast } from 'sonner';
 
 export const Settings = () => {
   const navigate = useNavigate();
   const user = getUser();
   const progress = getProgress();
+  const { t, level, setLevel, currentLevel } = useLanguage();
+  const [showLevelDialog, setShowLevelDialog] = useState(false);
 
   useEffect(() => {
     if (!getToken()) {
@@ -36,13 +43,13 @@ export const Settings = () => {
     a.download = 'worklish_progress.json';
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Progreso exportado');
+    toast.success(t('common.success'));
   };
 
   const handleClearProgress = () => {
     if (window.confirm('¿Estás seguro de que quieres borrar todo tu progreso local?')) {
       localStorage.removeItem('worklish_progress');
-      toast.success('Progreso borrado');
+      toast.success(t('common.success'));
       window.location.reload();
     }
   };
@@ -52,9 +59,15 @@ export const Settings = () => {
       removeToken();
       removeUser();
       localStorage.removeItem('worklish_progress');
-      toast.success('Cuenta eliminada');
+      toast.success(t('common.success'));
       navigate('/');
     }
+  };
+
+  const handleLevelChange = (newLevel) => {
+    setLevel(newLevel);
+    setShowLevelDialog(false);
+    toast.success('Nivel actualizado');
   };
 
   return (
@@ -72,19 +85,91 @@ export const Settings = () => {
             data-testid="settings-title"
             className="text-3xl font-bold font-['Outfit'] text-white mb-2"
           >
-            Configuración
+            {t('settings.title')}
           </h1>
           <p className="text-slate-400">
-            Administra tu cuenta y preferencias.
+            {t('settings.subtitle')}
           </p>
         </motion.div>
 
         <div className="max-w-3xl space-y-6">
+          {/* Language Level */}
+          <Card className="bg-[#1a1a2e] border-white/5 p-6">
+            <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+              <Globe size={20} className="text-[#06b6d4]" />
+              {t('settings.languageLevel')}
+            </h2>
+            
+            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  level === 'beginner' ? 'bg-[#10b981]/20' :
+                  level === 'intermediate' ? 'bg-[#f59e0b]/20' : 'bg-[#7c3aed]/20'
+                }`}>
+                  <BookOpen size={24} className={`${
+                    level === 'beginner' ? 'text-[#10b981]' :
+                    level === 'intermediate' ? 'text-[#f59e0b]' : 'text-[#7c3aed]'
+                  }`} />
+                </div>
+                <div>
+                  <p className="text-white font-medium">
+                    {t('settings.currentLevel')}: {currentLevel?.name?.es || 'Principiante'}
+                  </p>
+                  <p className="text-slate-400 text-sm">
+                    {currentLevel?.description?.es || t('settings.languageDesc')}
+                  </p>
+                </div>
+              </div>
+              
+              <Dialog open={showLevelDialog} onOpenChange={setShowLevelDialog}>
+                <DialogTrigger asChild>
+                  <Button 
+                    data-testid="change-level-btn"
+                    className="bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-full"
+                  >
+                    {t('settings.changeLevel')}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#1a1a2e] border-white/10 max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">{t('settings.changeLevel')}</DialogTitle>
+                  </DialogHeader>
+                  <LevelSelector 
+                    currentLevel={level} 
+                    onSelect={handleLevelChange}
+                    showTitle={false}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {/* Level explanation */}
+            <div className="mt-4 grid grid-cols-3 gap-3">
+              {Object.values(LANGUAGE_LEVELS).map((lvl) => (
+                <div 
+                  key={lvl.id}
+                  className={`p-3 rounded-xl text-center transition-all ${
+                    level === lvl.id 
+                      ? 'bg-[#7c3aed]/20 border border-[#7c3aed]/50' 
+                      : 'bg-white/5'
+                  }`}
+                >
+                  <p className="text-sm font-medium text-white mb-1">{lvl.name.es}</p>
+                  <p className="text-xs text-slate-400">
+                    App: {lvl.appLanguage === 'es' ? '🇪🇸' : '🇬🇧'}
+                    {' • '}
+                    Feedback: {lvl.feedbackLanguage === 'es' ? '🇪🇸' : '🇬🇧'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
           {/* Profile */}
           <Card className="bg-[#1a1a2e] border-white/5 p-6">
             <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
               <User size={20} className="text-[#7c3aed]" />
-              Perfil
+              {t('settings.profile')}
             </h2>
             
             <div className="space-y-4">
@@ -109,25 +194,25 @@ export const Settings = () => {
           <Card className="bg-[#1a1a2e] border-white/5 p-6">
             <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
               <Crown size={20} className="text-[#f59e0b]" />
-              Suscripción
+              {t('settings.subscription')}
             </h2>
             
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
               <div>
                 <p className="text-white font-medium capitalize">
-                  Plan {user?.subscription_status || 'Trial'}
+                  {t('settings.plan')} {user?.subscription_status || 'Trial'}
                 </p>
                 {user?.subscription_end && (
                   <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
                     <Calendar size={14} />
                     <span>
-                      Expira: {new Date(user.subscription_end).toLocaleDateString('es-ES')}
+                      {t('settings.expires')}: {new Date(user.subscription_end).toLocaleDateString('es-ES')}
                     </span>
                   </div>
                 )}
               </div>
               <Button className="bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-full">
-                Mejorar Plan
+                {t('settings.upgrade')}
               </Button>
             </div>
           </Card>
@@ -136,15 +221,15 @@ export const Settings = () => {
           <Card className="bg-[#1a1a2e] border-white/5 p-6">
             <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
               <Shield size={20} className="text-[#06b6d4]" />
-              Datos y Privacidad
+              {t('settings.dataPrivacy')}
             </h2>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                 <div>
-                  <p className="text-white font-medium">Exportar Progreso</p>
+                  <p className="text-white font-medium">{t('settings.exportProgress')}</p>
                   <p className="text-slate-400 text-sm">
-                    Descarga tu historial de práctica en formato JSON
+                    {t('settings.exportDesc')}
                   </p>
                 </div>
                 <Button 
@@ -153,15 +238,15 @@ export const Settings = () => {
                   className="border-white/10 text-slate-300 hover:bg-white/5 rounded-full"
                 >
                   <Download size={18} className="mr-2" />
-                  Exportar
+                  {t('settings.export')}
                 </Button>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                 <div>
-                  <p className="text-white font-medium">Borrar Progreso Local</p>
+                  <p className="text-white font-medium">{t('settings.clearProgress')}</p>
                   <p className="text-slate-400 text-sm">
-                    Elimina todo tu progreso almacenado localmente
+                    {t('settings.clearDesc')}
                   </p>
                 </div>
                 <Button 
@@ -169,7 +254,7 @@ export const Settings = () => {
                   variant="outline"
                   className="border-[#f59e0b]/30 text-[#f59e0b] hover:bg-[#f59e0b]/10 rounded-full"
                 >
-                  Borrar
+                  {t('settings.clear')}
                 </Button>
               </div>
             </div>
@@ -179,21 +264,21 @@ export const Settings = () => {
           <Card className="bg-[#1a1a2e] border-[#ef4444]/20 p-6">
             <h2 className="text-lg font-semibold text-[#ef4444] mb-6 flex items-center gap-2">
               <Trash2 size={20} />
-              Zona de Peligro
+              {t('settings.dangerZone')}
             </h2>
             
             <div className="flex items-center justify-between p-4 bg-[#ef4444]/10 rounded-xl">
               <div>
-                <p className="text-white font-medium">Eliminar Cuenta</p>
+                <p className="text-white font-medium">{t('settings.deleteAccount')}</p>
                 <p className="text-slate-400 text-sm">
-                  Esta acción eliminará permanentemente tu cuenta
+                  {t('settings.deleteDesc')}
                 </p>
               </div>
               <Button 
                 onClick={handleDeleteAccount}
                 className="bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-full"
               >
-                Eliminar
+                {t('settings.delete')}
               </Button>
             </div>
           </Card>
