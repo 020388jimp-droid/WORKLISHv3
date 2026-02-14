@@ -106,6 +106,7 @@ class VideoCallRequest(BaseModel):
     user_message: str
     conversation_history: List[ConversationMessage] = []
     scenario: str = "job interview"
+    feedback_language: str = "es"  # es = Spanish, en = English
 
 class VideoCallResponse(BaseModel):
     ai_response: str
