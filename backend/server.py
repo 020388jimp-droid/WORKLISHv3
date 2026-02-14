@@ -79,6 +79,7 @@ class TokenResponse(BaseModel):
 class TextPracticeRequest(BaseModel):
     text: str
     context: str = "professional email"  # email, report, presentation, meeting, etc.
+    feedback_language: str = "es"  # es = Spanish, en = English
 
 class TextPracticeResponse(BaseModel):
     original_text: str
