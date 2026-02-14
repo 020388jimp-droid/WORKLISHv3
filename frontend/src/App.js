@@ -11,6 +11,9 @@ import VoicePractice from "./pages/VoicePractice";
 import VideoCall from "./pages/VideoCall";
 import Settings from "./pages/Settings";
 
+// Context
+import { LanguageProvider } from "./contexts/LanguageContext";
+
 // Auth guard
 import { getToken } from "./lib/utils";
 
