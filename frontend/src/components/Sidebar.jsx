@@ -9,18 +9,18 @@ import {
   Flame,
   Crown
 } from 'lucide-react';
-import { getUser, getProgress, removeToken, removeUser } from '../lib/utils';
+import { getProgress } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 import { Progress } from './ui/progress';
 
 export const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = getUser();
+  const { userProfile, logout } = useAuth();
   const progress = getProgress();
 
-  const handleLogout = () => {
-    removeToken();
-    removeUser();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
