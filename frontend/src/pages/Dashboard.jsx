@@ -36,7 +36,7 @@ export const Dashboard = () => {
     if (hour < 12) setGreeting('Buenos días');
     else if (hour < 18) setGreeting('Buenas tardes');
     else setGreeting('Buenas noches');
-  }, [navigate]);
+  }, [navigate, isAuthenticated]);
 
   const practiceModules = [
     {
@@ -92,7 +92,7 @@ export const Dashboard = () => {
             data-testid="dashboard-greeting"
             className="text-3xl font-bold font-['Outfit'] text-white mb-2"
           >
-            {greeting}, {user?.name?.split(' ')[0] || 'Usuario'}
+            {greeting}, {userProfile?.name?.split(' ')[0] || 'Usuario'}
           </h1>
           <p className="text-slate-400">
             ¿Listo para mejorar tu inglés hoy?
