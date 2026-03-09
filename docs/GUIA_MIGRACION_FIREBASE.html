@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WORKLISH - Guía de Migración a Firebase</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.7;
+            color: #1a1a2e;
+            background: #ffffff;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            color: #7c3aed;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #7c3aed;
+            padding-bottom: 15px;
+        }
+        
+        h2 {
+            font-size: 1.8em;
+            color: #1a1a2e;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e5e5;
+        }
+        
+        h3 {
+            font-size: 1.3em;
+            color: #374151;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        h4 {
+            font-size: 1.1em;
+            color: #4b5563;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+        }
+        
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: #7c3aed;
+        }
+        
+        pre {
+            background: #1a1a2e;
+            color: #e5e5e5;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border: 1px solid #e5e5e5;
+        }
+        
+        th {
+            background: #7c3aed;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        ul, ol {
+            margin: 15px 0;
+            padding-left: 30px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .alert-warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .alert-info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .alert-success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            background: #7c3aed;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        
+        .toc {
+            background: #f9fafb;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        .toc h3 {
+            margin-top: 0;
+            color: #7c3aed;
+        }
+        
+        .toc ol {
+            margin-bottom: 0;
+        }
+        
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .checklist li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        
+        .checklist li:before {
+            content: "☐ ";
+            font-size: 1.2em;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        @media print {
+            body {
+                padding: 20px;
+            }
+            
+            pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            
+            .page-break {
+                page-break-before: always;
+            }
+        }
+        
+        .header-info {
+            color: #6b7280;
+            font-size: 0.9em;
+            margin-bottom: 30px;
+        }
+        
+        .highlight {
+            background: linear-gradient(120deg, #fef3c7 0%, #fef3c7 100%);
+            padding: 2px 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 WORKLISH - Guía de Migración a Firebase</h1>
+    <p class="header-info">Versión 1.0 | Marzo 2026 | Guía completa paso a paso</p>
+
+    <div class="toc">
+        <h3>📋 Índice</h3>
+        <ol>
+            <li><a href="#resumen">Resumen de la Migración</a></li>
+            <li><a href="#requisitos">Requisitos Previos</a></li>
+            <li><a href="#paso1">Paso 1: Configurar Firebase</a></li>
+            <li><a href="#paso2">Paso 2: Habilitar APIs de Google Cloud</a></li>
+            <li><a href="#paso3">Paso 3: Descargar el Proyecto</a></li>
+            <li><a href="#paso4">Paso 4: Configurar Firebase en el Proyecto</a></li>
+            <li><a href="#paso5">Paso 5: Migrar el Backend</a></li>
+            <li><a href="#paso6">Paso 6: Migrar el Frontend</a></li>
+            <li><a href="#paso7">Paso 7: Configurar Firebase Studio</a></li>
+            <li><a href="#paso8">Paso 8: Deploy a Firebase Hosting</a></li>
+            <li><a href="#problemas">Solución de Problemas</a></li>
+            <li><a href="#comandos">Comandos Rápidos</a></li>
+        </ol>
+    </div>
+
+    <h2 id="resumen">1. Resumen de la Migración</h2>
+    
+    <h3>¿Qué cambiamos?</h3>
+    <table>
+        <tr>
+            <th>Componente</th>
+            <th>Antes</th>
+            <th>Después (Google)</th>
+        </tr>
+        <tr>
+            <td>Base de datos</td>
+            <td>MongoDB</td>
+            <td>Firebase Firestore</td>
+        </tr>
+        <tr>
+            <td>Autenticación</td>
+            <td>JWT propio</td>
+            <td>Firebase Authentication</td>
+        </tr>
+        <tr>
+            <td>LLM (texto)</td>
+            <td>Gemini via Emergent</td>
+            <td>Gemini API directo</td>
+        </tr>
+        <tr>
+            <td>Speech-to-Text</td>
+            <td>OpenAI Whisper</td>
+            <td>Google Cloud Speech-to-Text</td>
+        </tr>
+        <tr>
+            <td>Text-to-Speech</td>
+            <td>Web Speech API</td>
+            <td>Google Cloud Text-to-Speech</td>
+        </tr>
+        <tr>
+            <td>Backend</td>
+            <td>FastAPI (Python)</td>
+            <td>Firebase Cloud Functions</td>
+        </tr>
+        <tr>
+            <td>Hosting</td>
+            <td>Servidor propio</td>
+            <td>Firebase Hosting</td>
+        </tr>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2 id="requisitos">2. Requisitos Previos</h2>
+    
+    <h3>2.1 Cuentas necesarias</h3>
+    <ul>
+        <li>✅ Cuenta de Google Cloud (ya la tienes con proyecto WORKLISH)</li>
+        <li>✅ Firebase habilitado en el proyecto</li>
+        <li>✅ Gemini API Key (ya la tienes)</li>
+    </ul>
+
+    <h3>2.2 Software a instalar</h3>
+    
+    <h4>Windows</h4>
+    <pre><code># 1. Instalar Node.js
+# Descargar de: https://nodejs.org/
+
+# 2. Verificar instalación
+node --version
+npm --version
+
+# 3. Instalar Firebase CLI
+npm install -g firebase-tools
+
+# 4. Verificar
+firebase --version</code></pre>
+
+    <h4>Mac</h4>
+    <pre><code># 1. Instalar Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. Instalar Node.js
+brew install node
+
+# 3. Instalar Firebase CLI
+npm install -g firebase-tools</code></pre>
+
+    <h4>Linux (Ubuntu/Debian)</h4>
+    <pre><code># 1. Instalar Node.js
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# 2. Instalar Firebase CLI
+npm install -g firebase-tools</code></pre>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso1">3. Paso 1: Configurar Firebase</h2>
+
+    <h3>3.1 Acceder a Firebase Console</h3>
+    <ol>
+        <li>Abre tu navegador y ve a: <strong>https://console.firebase.google.com/</strong></li>
+        <li>Inicia sesión con tu cuenta de Google</li>
+        <li>Selecciona tu proyecto "WORKLISH"</li>
+    </ol>
+
+    <h3>3.2 Habilitar Firebase Authentication</h3>
+    <ol>
+        <li>En el menú izquierdo, haz clic en <strong>"Authentication"</strong></li>
+        <li>Clic en <strong>"Comenzar"</strong></li>
+        <li>En la pestaña <strong>"Sign-in method"</strong>, habilita:
+            <ul>
+                <li>✅ Correo electrónico/contraseña</li>
+                <li>✅ Google (opcional)</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h3>3.3 Crear Cloud Firestore</h3>
+    <ol>
+        <li>En el menú izquierdo, haz clic en <strong>"Firestore Database"</strong></li>
+        <li>Clic en <strong>"Crear base de datos"</strong></li>
+        <li>Selecciona <strong>"Modo de producción"</strong></li>
+        <li>Ubicación: <strong>"us-central1"</strong></li>
+        <li>Clic en <strong>"Habilitar"</strong></li>
+    </ol>
+
+    <h3>3.4 Configurar Reglas de Seguridad</h3>
+    <p>En Firestore → Reglas, usa:</p>
+    <pre><code>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /progress/{docId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    match /practices/{docId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+  }
+}</code></pre>
+
+    <h3>3.5 Obtener Configuración de Firebase</h3>
+    <ol>
+        <li>En Firebase Console → ⚙️ Configuración del proyecto</li>
+        <li>Desplázate a "Tus apps" → clic en icono Web <strong>&lt;/&gt;</strong></li>
+        <li>Nombre: <strong>"worklish-web"</strong></li>
+        <li>✅ Marca "Configurar Firebase Hosting"</li>
+        <li>Clic en <strong>"Registrar app"</strong></li>
+    </ol>
+
+    <div class="alert alert-warning">
+        <strong>⚠️ IMPORTANTE:</strong> Copia y guarda la configuración que aparece:
+    </div>
+
+    <pre><code>const firebaseConfig = {
+  apiKey: "AIzaSy.....................",
+  authDomain: "worklish-XXXXX.firebaseapp.com",
+  projectId: "worklish-XXXXX",
+  storageBucket: "worklish-XXXXX.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef123456"
+};</code></pre>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso2">4. Paso 2: Habilitar APIs de Google Cloud</h2>
+
+    <h3>4.1 Desde Google Cloud Console</h3>
+    <ol>
+        <li>Ve a: <strong>https://console.cloud.google.com/</strong></li>
+        <li>Asegúrate de que el proyecto "WORKLISH" esté seleccionado</li>
+        <li>Ve a <strong>APIs y servicios → Biblioteca</strong></li>
+    </ol>
+
+    <h3>4.2 Habilitar cada API</h3>
+    <table>
+        <tr>
+            <th>API</th>
+            <th>Buscar</th>
+            <th>Acción</th>
+        </tr>
+        <tr>
+            <td>Speech-to-Text</td>
+            <td>"Cloud Speech-to-Text API"</td>
+            <td>Clic en HABILITAR</td>
+        </tr>
+        <tr>
+            <td>Text-to-Speech</td>
+            <td>"Cloud Text-to-Speech API"</td>
+            <td>Clic en HABILITAR</td>
+        </tr>
+        <tr>
+            <td>Gemini</td>
+            <td>"Generative Language API"</td>
+            <td>Verificar habilitada</td>
+        </tr>
+    </table>
+
+    <h3>4.3 Método alternativo (CLI)</h3>
+    <pre><code>gcloud auth login
+gcloud config set project TU_PROJECT_ID
+
+gcloud services enable speech.googleapis.com
+gcloud services enable texttospeech.googleapis.com
+gcloud services enable generativelanguage.googleapis.com
+gcloud services enable cloudfunctions.googleapis.com</code></pre>
+
+    <h3>4.4 Crear Cuenta de Servicio</h3>
+    <ol>
+        <li>Ve a <strong>Credenciales → + CREAR CREDENCIALES → Cuenta de servicio</strong></li>
+        <li>Nombre: <strong>"worklish-speech-service"</strong></li>
+        <li>Rol: <strong>"Propietario"</strong></li>
+        <li>Crea una clave JSON y <span class="highlight">guárdala de forma segura</span></li>
+    </ol>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso3">5. Paso 3: Descargar el Proyecto</h2>
+
+    <h3>Opción A: Desde GitHub</h3>
+    <pre><code>git clone https://github.com/TU_USUARIO/worklish.git
+cd worklish</code></pre>
+
+    <h3>Opción B: Desde Emergent</h3>
+    <ol>
+        <li>En Emergent, usa "Descargar código"</li>
+        <li>Extrae el ZIP</li>
+        <li>Abre terminal en esa carpeta</li>
+    </ol>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso4">6. Paso 4: Configurar Firebase en el Proyecto</h2>
+
+    <h3>6.1 Inicializar Firebase</h3>
+    <pre><code># Navegar al proyecto
+cd /ruta/a/worklish
+
+# Login en Firebase
+firebase login
+
+# Inicializar (se abrirá navegador)
+firebase init</code></pre>
+
+    <h3>6.2 Selecciones en firebase init</h3>
+    <div class="alert alert-info">
+        Usa ESPACIO para seleccionar, ENTER para continuar
+    </div>
+
+    <pre><code>? Which Firebase features?
+❯ ◉ Firestore
+  ◉ Functions
+  ◉ Hosting
+  ◉ Storage
+
+? Please select an option:
+❯ Use an existing project
+
+? Select project:
+❯ worklish-XXXXX (WORKLISH)
+
+? Functions language:
+❯ JavaScript
+
+? Use ESLint?
+❯ No
+
+? Install dependencies?
+❯ Yes
+
+? Public directory:
+❯ frontend/build
+
+? Single-page app?
+❯ Yes</code></pre>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso5">7. Paso 5: Migrar el Backend</h2>
+
+    <h3>7.1 Instalar dependencias</h3>
+    <pre><code>cd functions
+
+npm install @google-cloud/speech
+npm install @google-cloud/text-to-speech
+npm install @google/generative-ai
+npm install firebase-admin
+npm install firebase-functions
+npm install cors
+npm install busboy</code></pre>
+
+    <h3>7.2 Configurar API Key de Gemini</h3>
+    <pre><code>firebase functions:config:set gemini.api_key="TU_GEMINI_API_KEY"
+
+# Verificar
+firebase functions:config:get</code></pre>
+
+    <h3>7.3 Copiar credenciales</h3>
+    <pre><code>cp ~/Downloads/worklish-xxxxx-adminsdk.json functions/service-account.json</code></pre>
+
+    <h3>7.4 Código de Cloud Functions</h3>
+    <p>El archivo <code>functions/index.js</code> completo está en la guía Markdown. Contiene:</p>
+    <ul>
+        <li><code>health</code> - Health check</li>
+        <li><code>practiceText</code> - Práctica de escritura con Gemini</li>
+        <li><code>practiceVoice</code> - Práctica de voz con Speech-to-Text</li>
+        <li><code>videoCall</code> - Conversación con IA + TTS</li>
+        <li><code>textToSpeech</code> - Generar audio</li>
+        <li><code>getUserProfile</code> - Obtener perfil de usuario</li>
+    </ul>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso6">8. Paso 6: Migrar el Frontend</h2>
+
+    <h3>8.1 Instalar Firebase SDK</h3>
+    <pre><code>cd frontend
+npm install firebase</code></pre>
+
+    <h3>8.2 Crear archivo de configuración</h3>
+    <p>Crea <code>frontend/src/lib/firebase.js</code> con:</p>
+    <ul>
+        <li>Configuración de Firebase</li>
+        <li>Funciones de autenticación (login, registro, logout)</li>
+        <li>Funciones de API para llamar a Cloud Functions</li>
+    </ul>
+
+    <h3>8.3 Crear AuthContext</h3>
+    <p>Crea <code>frontend/src/contexts/AuthContext.jsx</code> para manejar el estado de autenticación con Firebase.</p>
+
+    <h3>8.4 Actualizar App.js</h3>
+    <p>Envolver la app con <code>AuthProvider</code> y usar <code>useAuth</code> en rutas protegidas.</p>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso7">9. Paso 7: Configurar Firebase Studio</h2>
+
+    <h3>9.1 Abrir Firebase Studio</h3>
+    <ol>
+        <li>Ve a: <strong>https://idx.google.com/</strong></li>
+        <li>Clic en <strong>"New project" → "Import from GitHub"</strong></li>
+        <li>Selecciona tu repositorio <strong>worklish</strong></li>
+        <li>Espera a que se configure</li>
+    </ol>
+
+    <h3>9.2 En la terminal de Firebase Studio</h3>
+    <pre><code># Instalar dependencias
+cd frontend && npm install
+cd ../functions && npm install
+
+# Login en Firebase
+firebase login --no-localhost
+
+# Verificar proyecto
+firebase projects:list</code></pre>
+
+    <h3>9.3 Probar localmente</h3>
+    <pre><code># Terminal 1: Emulador de Functions
+cd functions
+firebase emulators:start --only functions
+
+# Terminal 2: Frontend
+cd frontend
+npm start</code></pre>
+
+    <div class="page-break"></div>
+
+    <h2 id="paso8">10. Paso 8: Deploy a Firebase Hosting</h2>
+
+    <h3>10.1 Construir el Frontend</h3>
+    <pre><code>cd frontend
+npm run build</code></pre>
+
+    <h3>10.2 Deploy de Functions</h3>
+    <pre><code>cd ../functions
+firebase deploy --only functions</code></pre>
+
+    <p>Verás las URLs de tus funciones:</p>
+    <pre><code>✔ Deploy complete!
+
+Function URL (health): https://us-central1-worklish-XXXXX.cloudfunctions.net/health
+Function URL (practiceText): https://us-central1-worklish-XXXXX.cloudfunctions.net/practiceText
+...</code></pre>
+
+    <h3>10.3 Actualizar URL en Frontend</h3>
+    <p>Actualiza <code>FUNCTIONS_URL</code> en <code>firebase.js</code> con la URL real.</p>
+
+    <h3>10.4 Deploy del Frontend</h3>
+    <pre><code>cd ..
+firebase deploy --only hosting</code></pre>
+
+    <h3>10.5 Deploy Completo</h3>
+    <pre><code>firebase deploy</code></pre>
+
+    <div class="alert alert-success">
+        <strong>✅ ¡Listo!</strong> Tu app estará en: <code>https://worklish-XXXXX.web.app</code>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2 id="problemas">11. Solución de Problemas</h2>
+
+    <h3>Error: "Permission denied"</h3>
+    <pre><code>gcloud services enable cloudfunctions.googleapis.com
+gcloud services enable cloudbuild.googleapis.com</code></pre>
+
+    <h3>Error: "Invalid API key"</h3>
+    <ol>
+        <li>Google Cloud Console → Credenciales</li>
+        <li>Verifica que las APIs correctas estén habilitadas</li>
+        <li>Regenera la key si es necesario</li>
+    </ol>
+
+    <h3>Error: "CORS policy"</h3>
+    <p>Verifica que <code>cors</code> esté configurado en <code>functions/index.js</code></p>
+
+    <h3>Error: "User not found"</h3>
+    <p>Verifica que Authentication esté habilitado en Firebase Console</p>
+
+    <div class="page-break"></div>
+
+    <h2 id="comandos">12. Comandos Rápidos de Referencia</h2>
+
+    <h3>Firebase CLI</h3>
+    <table>
+        <tr>
+            <th>Comando</th>
+            <th>Descripción</th>
+        </tr>
+        <tr>
+            <td><code>firebase login</code></td>
+            <td>Iniciar sesión</td>
+        </tr>
+        <tr>
+            <td><code>firebase projects:list</code></td>
+            <td>Ver proyectos</td>
+        </tr>
+        <tr>
+            <td><code>firebase use PROJECT_ID</code></td>
+            <td>Seleccionar proyecto</td>
+        </tr>
+        <tr>
+            <td><code>firebase deploy</code></td>
+            <td>Deploy todo</td>
+        </tr>
+        <tr>
+            <td><code>firebase deploy --only functions</code></td>
+            <td>Solo functions</td>
+        </tr>
+        <tr>
+            <td><code>firebase deploy --only hosting</code></td>
+            <td>Solo hosting</td>
+        </tr>
+        <tr>
+            <td><code>firebase functions:log</code></td>
+            <td>Ver logs</td>
+        </tr>
+        <tr>
+            <td><code>firebase emulators:start</code></td>
+            <td>Emuladores locales</td>
+        </tr>
+    </table>
+
+    <h3>Google Cloud CLI</h3>
+    <table>
+        <tr>
+            <th>Comando</th>
+            <th>Descripción</th>
+        </tr>
+        <tr>
+            <td><code>gcloud auth login</code></td>
+            <td>Iniciar sesión</td>
+        </tr>
+        <tr>
+            <td><code>gcloud projects list</code></td>
+            <td>Listar proyectos</td>
+        </tr>
+        <tr>
+            <td><code>gcloud services enable API.googleapis.com</code></td>
+            <td>Habilitar API</td>
+        </tr>
+        <tr>
+            <td><code>gcloud services list --enabled</code></td>
+            <td>Ver APIs habilitadas</td>
+        </tr>
+    </table>
+
+    <div class="page-break"></div>
+
+    <h2>✅ Checklist Final</h2>
+    <ul class="checklist">
+        <li>Firebase Authentication configurado</li>
+        <li>Firestore Database creado</li>
+        <li>Reglas de seguridad publicadas</li>
+        <li>APIs de Google Cloud habilitadas</li>
+        <li>API Key de Gemini configurada</li>
+        <li>Cuenta de servicio creada</li>
+        <li>Cloud Functions desplegadas</li>
+        <li>Frontend construido y desplegado</li>
+        <li>Probar login/registro</li>
+        <li>Probar práctica de texto</li>
+        <li>Probar práctica de voz</li>
+        <li>Probar video llamada</li>
+    </ul>
+
+    <hr style="margin: 40px 0; border: none; border-top: 2px solid #e5e5e5;">
+
+    <p style="text-align: center; color: #6b7280;">
+        <strong>WORKLISH</strong> - Guía de Migración a Firebase<br>
+        Versión 1.0 | Marzo 2026<br><br>
+        <em>Para guardar como PDF: Ctrl+P (Windows) o Cmd+P (Mac) → Guardar como PDF</em>
+    </p>
+
+</body>
+</html>
