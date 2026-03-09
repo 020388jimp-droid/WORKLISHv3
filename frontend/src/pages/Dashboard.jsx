@@ -17,16 +17,17 @@ import { Card } from '../components/ui/card';
 import { Progress } from '../components/ui/progress';
 import { Button } from '../components/ui/button';
 import { Sidebar } from '../components/Sidebar';
-import { getUser, getProgress, getToken } from '../lib/utils';
+import { getProgress } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const user = getUser();
+  const { userProfile, isAuthenticated } = useAuth();
   const progress = getProgress();
   const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
-    if (!getToken()) {
+    if (!isAuthenticated) {
       navigate('/auth');
       return;
     }
