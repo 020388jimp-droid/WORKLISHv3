@@ -16,12 +16,15 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Progress } from '../components/ui/progress';
 import { Sidebar } from '../components/Sidebar';
-import { apiRequest, getToken, updateProgress } from '../lib/utils';
+import { updateProgress } from '../lib/utils';
+import { practiceText } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
 
 export const TextPractice = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const { t, feedbackLang } = useLanguage();
   const [text, setText] = useState('');
   const [context, setContext] = useState('professional email');
@@ -43,7 +46,7 @@ export const TextPractice = () => {
       return;
     }
 
-    if (!getToken()) {
+    if (!isAuthenticated) {
       navigate('/auth');
       return;
     }
@@ -52,10 +55,7 @@ export const TextPractice = () => {
     setResult(null);
 
     try {
-      const response = await apiRequest('/practice/text', {
-        method: 'POST',
-        body: JSON.stringify({ text, context, feedback_language: feedbackLang })
-      });
+      const response = await practiceText(text, context, feedbackLang);
 
       setResult(response);
       
