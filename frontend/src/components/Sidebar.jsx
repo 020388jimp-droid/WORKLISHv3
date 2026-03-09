@@ -53,14 +53,14 @@ export const Sidebar = () => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#06b6d4] flex items-center justify-center">
             <span className="text-white font-semibold">
-              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              {userProfile?.name?.charAt(0)?.toUpperCase() || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-medium truncate">{user?.name || 'Usuario'}</p>
+            <p className="text-white font-medium truncate">{userProfile?.name || 'Usuario'}</p>
             <div className="flex items-center gap-1 text-xs text-[#06b6d4]">
               <Crown size={12} />
-              <span className="capitalize">{user?.subscription_status || 'Trial'}</span>
+              <span className="capitalize">{userProfile?.subscription_status || 'Trial'}</span>
             </div>
           </div>
         </div>
