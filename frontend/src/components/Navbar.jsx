@@ -2,17 +2,16 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, Globe } from 'lucide-react';
 import { Button } from './ui/button';
-import { getToken, removeToken, removeUser } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Navbar = ({ transparent = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [lang, setLang] = useState('ES');
   const navigate = useNavigate();
-  const isAuthenticated = !!getToken();
+  const { isAuthenticated, logout } = useAuth();
 
-  const handleLogout = () => {
-    removeToken();
-    removeUser();
+  const handleLogout = async () => {
+    await logout();
     navigate('/');
   };
 
@@ -28,7 +27,6 @@ export const Navbar = ({ transparent = false }) => {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
         <Link 
           to="/" 
           data-testid="navbar-logo"
@@ -39,12 +37,11 @@ export const Navbar = ({ transparent = false }) => {
           </span>
         </Link>
 
-        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
           {!isAuthenticated ? (
             <>
               <a href="#features" className="text-slate-300 hover:text-white transition-colors">
-                {lang === 'ES' ? 'Características' : 'Features'}
+                {lang === 'ES' ? 'Caracteristicas' : 'Features'}
               </a>
               <a href="#pricing" className="text-slate-300 hover:text-white transition-colors">
                 {lang === 'ES' ? 'Precios' : 'Pricing'}
@@ -68,9 +65,7 @@ export const Navbar = ({ transparent = false }) => {
           )}
         </div>
 
-        {/* Right side */}
         <div className="hidden md:flex items-center gap-4">
-          {/* Language toggle */}
           <button 
             onClick={toggleLang}
             data-testid="lang-toggle"
@@ -88,7 +83,7 @@ export const Navbar = ({ transparent = false }) => {
                   data-testid="login-btn"
                   className="text-slate-300 hover:text-white"
                 >
-                  {lang === 'ES' ? 'Iniciar Sesión' : 'Login'}
+                  {lang === 'ES' ? 'Iniciar Sesion' : 'Login'}
                 </Button>
               </Link>
               <Link to="/auth?mode=register">
@@ -107,12 +102,11 @@ export const Navbar = ({ transparent = false }) => {
               variant="ghost"
               className="text-slate-300 hover:text-white"
             >
-              {lang === 'ES' ? 'Cerrar Sesión' : 'Logout'}
+              {lang === 'ES' ? 'Cerrar Sesion' : 'Logout'}
             </Button>
           )}
         </div>
 
-        {/* Mobile menu button */}
         <button 
           className="md:hidden text-white"
           onClick={() => setIsOpen(!isOpen)}
@@ -122,21 +116,20 @@ export const Navbar = ({ transparent = false }) => {
         </button>
       </div>
 
-      {/* Mobile menu */}
       {isOpen && (
         <div className="md:hidden glass-strong border-t border-white/5">
           <div className="px-6 py-4 space-y-4">
             {!isAuthenticated ? (
               <>
                 <a href="#features" className="block text-slate-300 hover:text-white py-2">
-                  {lang === 'ES' ? 'Características' : 'Features'}
+                  {lang === 'ES' ? 'Caracteristicas' : 'Features'}
                 </a>
                 <a href="#pricing" className="block text-slate-300 hover:text-white py-2">
                   {lang === 'ES' ? 'Precios' : 'Pricing'}
                 </a>
                 <Link to="/auth" className="block">
                   <Button variant="ghost" className="w-full justify-start text-slate-300">
-                    {lang === 'ES' ? 'Iniciar Sesión' : 'Login'}
+                    {lang === 'ES' ? 'Iniciar Sesion' : 'Login'}
                   </Button>
                 </Link>
                 <Link to="/auth?mode=register" className="block">
@@ -160,7 +153,7 @@ export const Navbar = ({ transparent = false }) => {
                   {lang === 'ES' ? 'Video' : 'Video'}
                 </Link>
                 <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-slate-300">
-                  {lang === 'ES' ? 'Cerrar Sesión' : 'Logout'}
+                  {lang === 'ES' ? 'Cerrar Sesion' : 'Logout'}
                 </Button>
               </>
             )}

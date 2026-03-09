@@ -8,23 +8,19 @@ const Busboy = require('busboy');
 admin.initializeApp();
 const db = admin.firestore();
 
-// Gemini API Key - Configurada en Firebase Functions config
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key || 'AIzaSyCMPIIfX8Jb1Fnu4rb0_iOt-Sd0Nu2Fnec';
+// Gemini API Key - Usar variable de entorno (.env en el directorio functions/)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// ============ HELPER: Verificar autenticación ============
+// ============ HELPER: Verificar autenticacion ============
 const verifyAuth = async (req) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new Error('No authorization token provided');
   }
   const idToken = authHeader.split('Bearer ')[1];
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    return decodedToken;
-  } catch (error) {
-    throw new Error('Invalid or expired token');
-  }
+  const decodedToken = await admin.auth().verifyIdToken(idToken);
+  return decodedToken;
 };
 
 // ============ HELPER: Parsear respuesta JSON de Gemini ============
@@ -58,7 +54,6 @@ exports.getUserProfile = functions.https.onRequest(async (req, res) => {
       const userDoc = await db.collection('users').doc(user.uid).get();
       
       if (!userDoc.exists) {
-        // Crear perfil si no existe
         const newProfile = {
           email: user.email,
           name: user.name || user.email?.split('@')[0] || 'Usuario',
@@ -116,7 +111,7 @@ exports.updateUserProfile = functions.https.onRequest(async (req, res) => {
   });
 });
 
-// ============ API: Práctica de Texto ============
+// ============ API: Practica de Texto ============
 exports.practiceText = functions.https.onRequest(async (req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -132,13 +127,11 @@ exports.practiceText = functions.https.onRequest(async (req, res) => {
         return res.status(400).json({ error: 'Text is required' });
       }
 
-      // Determinar idioma de feedback
       const feedbackLang = feedback_language || 'es';
       const tipsInstruction = feedbackLang === 'es' 
-        ? 'Write all tips and feedback in SPANISH (español), but keep the corrected text in English.'
+        ? 'Write all tips and feedback in SPANISH (espanol), but keep the corrected text in English.'
         : 'Write all tips and feedback in English.';
 
-      // Llamar a Gemini
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `You are a professional English business writing coach. Your role is to:
@@ -197,7 +190,7 @@ The scores should be 0-100. Be encouraging but accurate.`;
   });
 });
 
-// ============ API: Práctica de Voz (Speech-to-Text con Gemini) ============
+// ============ API: Practica de Voz ============
 exports.practiceVoice = functions.https.onRequest(async (req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -214,7 +207,7 @@ exports.practiceVoice = functions.https.onRequest(async (req, res) => {
       let context = 'business conversation';
 
       await new Promise((resolve, reject) => {
-        busboy.on('file', (fieldname, file, info) => {
+        busboy.on('file', (fieldname, file) => {
           const chunks = [];
           file.on('data', (chunk) => chunks.push(chunk));
           file.on('end', () => {
@@ -237,16 +230,42 @@ exports.practiceVoice = functions.https.onRequest(async (req, res) => {
         }
       });
 
-      if (!audioBuffer) {
-        return res.status(400).json({ error: 'No audio file provided' });
+      // Transcribir audio con Gemini multimodal (si hay audio)
+      let transcribedText = expectedText || '';
+      
+      if (audioBuffer && audioBuffer.length > 0) {
+        try {
+          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+          const audioBase64 = audioBuffer.toString('base64');
+          
+          const transcriptionResult = await model.generateContent([
+            'Transcribe the following audio to English text. Return ONLY the transcribed text, nothing else. If the audio is unclear, return your best interpretation.',
+            {
+              inlineData: {
+                data: audioBase64,
+                mimeType: 'audio/webm'
+              }
+            }
+          ]);
+          
+          const transcription = transcriptionResult.response.text().trim();
+          if (transcription && transcription.length > 0) {
+            transcribedText = transcription;
+          }
+        } catch (transcriptionError) {
+          console.warn('Audio transcription failed, using expected text:', transcriptionError.message);
+          if (!transcribedText) {
+            transcribedText = 'Audio transcription unavailable. Please provide expected text.';
+          }
+        }
       }
 
-      // Para el MVP, usamos un mensaje simulado ya que Gemini no procesa audio directamente
-      // En producción, integrarías Google Cloud Speech-to-Text aquí
-      const transcribedText = expectedText || "Hello, this is a test of the voice practice feature.";
+      if (!transcribedText) {
+        return res.status(400).json({ error: 'No audio or expected text provided' });
+      }
 
       // Obtener feedback con Gemini
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const feedbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `You are a pronunciation and speaking coach for business English.
 Analyze this transcribed speech and provide feedback.
@@ -264,7 +283,7 @@ Respond ONLY with valid JSON:
 
 Score should be 0-100. Be encouraging and helpful.`;
 
-      const result = await model.generateContent(prompt);
+      const result = await feedbackModel.generateContent(prompt);
       const feedbackText = (await result.response).text();
       const feedback = parseGeminiJSON(feedbackText);
 
@@ -292,7 +311,7 @@ Score should be 0-100. Be encouraging and helpful.`;
   });
 });
 
-// ============ API: Video Call / Conversación con IA ============
+// ============ API: Video Call / Conversacion con IA ============
 exports.videoCall = functions.https.onRequest(async (req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {
@@ -310,10 +329,9 @@ exports.videoCall = functions.https.onRequest(async (req, res) => {
 
       const feedbackLang = feedback_language || 'es';
       const tipsInstruction = feedbackLang === 'es'
-        ? 'Write tips and corrections in SPANISH (español), but keep the ai_response conversation in English since this is English practice.'
+        ? 'Write tips and corrections in SPANISH (espanol), but keep the ai_response conversation in English since this is English practice.'
         : 'Write everything in English.';
 
-      // Construir historial de conversación
       let historyText = '';
       if (conversation_history && conversation_history.length > 0) {
         historyText = conversation_history.slice(-6).map(msg => 
@@ -375,7 +393,7 @@ Be encouraging, professional, and keep the conversation flowing naturally.`;
 
       res.json({
         ai_response: data.ai_response || "I'm sorry, could you repeat that?",
-        audio_base64: null, // TTS se maneja en el frontend con Web Speech API
+        audio_base64: null,
         tips: data.tips || [],
         corrections: data.corrections || []
       });
@@ -387,14 +405,14 @@ Be encouraging, professional, and keep the conversation flowing naturally.`;
   });
 });
 
-// ============ API: Obtener historial de prácticas ============
+// ============ API: Obtener historial de practicas ============
 exports.getPracticeHistory = functions.https.onRequest(async (req, res) => {
   cors(req, res, async () => {
     try {
       const user = await verifyAuth(req);
       
       const limit = parseInt(req.query.limit) || 20;
-      const type = req.query.type; // 'text', 'voice', 'video', or undefined for all
+      const type = req.query.type;
       
       let query = db.collection('practices')
         .where('userId', '==', user.uid)
@@ -427,7 +445,7 @@ exports.getPracticeHistory = functions.https.onRequest(async (req, res) => {
   });
 });
 
-// ============ API: Actualizar suscripción ============
+// ============ API: Actualizar suscripcion ============
 exports.updateSubscription = functions.https.onRequest(async (req, res) => {
   cors(req, res, async () => {
     if (req.method !== 'POST') {

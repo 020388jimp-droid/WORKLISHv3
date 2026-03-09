@@ -17,11 +17,14 @@ import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Progress } from '../components/ui/progress';
 import { Sidebar } from '../components/Sidebar';
-import { API_URL, getToken, updateProgress } from '../lib/utils';
+import { updateProgress } from '../lib/utils';
+import { practiceVoice } from '../lib/firebase';
+import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
 
 export const VoicePractice = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -42,6 +45,12 @@ export const VoicePractice = () => {
   ];
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth');
+    }
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -50,11 +59,6 @@ export const VoicePractice = () => {
   }, []);
 
   const startRecording = async () => {
-    if (!getToken()) {
-      navigate('/auth');
-      return;
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
@@ -81,9 +85,9 @@ export const VoicePractice = () => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
 
-      toast.success('Grabación iniciada');
+      toast.success('Grabacion iniciada');
     } catch (error) {
-      toast.error('No se pudo acceder al micrófono');
+      toast.error('No se pudo acceder al microfono');
     }
   };
 
@@ -94,7 +98,7 @@ export const VoicePractice = () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      toast.info('Grabación detenida');
+      toast.info('Grabacion detenida');
     }
   };
 
@@ -107,33 +111,10 @@ export const VoicePractice = () => {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('audio_file', audioBlob, 'recording.webm');
-      formData.append('context', 'business conversation');
-      if (expectedText.trim()) {
-        formData.append('expected_text', expectedText);
-      }
-
-      const token = getToken();
-      const response = await fetch(`${API_URL}/practice/voice`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al procesar el audio');
-      }
-
-      const data = await response.json();
+      const data = await practiceVoice(audioBlob, expectedText.trim() || null, 'business conversation');
       setResult(data);
-      
-      // Update local progress
       updateProgress('voice', data.accuracy_score);
-      
-      toast.success('¡Análisis completado!');
+      toast.success('Analisis completado!');
     } catch (error) {
       toast.error(error.message || 'Error al analizar el audio');
     } finally {
@@ -172,7 +153,7 @@ export const VoicePractice = () => {
             Entrenamiento de Voz
           </h1>
           <p className="text-slate-400">
-            Graba tu voz y recibe retroalimentación sobre tu pronunciación.
+            Graba tu voz y recibe retroalimentacion sobre tu pronunciacion.
           </p>
         </motion.div>
 
@@ -224,7 +205,7 @@ export const VoicePractice = () => {
 
                 {audioBlob && !isRecording && (
                   <p className="text-[#10b981] mb-4">
-                    Grabación lista ({formatTime(recordingTime)})
+                    Grabacion lista ({formatTime(recordingTime)})
                   </p>
                 )}
 
@@ -236,7 +217,7 @@ export const VoicePractice = () => {
                       className="bg-[#06b6d4] hover:bg-[#22d3ee] text-white rounded-full px-8"
                     >
                       <Play className="mr-2" size={18} />
-                      Iniciar Grabación
+                      Iniciar Grabacion
                     </Button>
                   ) : (
                     <Button
@@ -303,10 +284,10 @@ export const VoicePractice = () => {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 animate-spin" size={18} />
-                      Analizando pronunciación...
+                      Analizando pronunciacion...
                     </>
                   ) : (
-                    'Analizar Pronunciación'
+                    'Analizar Pronunciacion'
                   )}
                 </Button>
               )}
@@ -325,7 +306,7 @@ export const VoicePractice = () => {
                   {/* Score */}
                   <div className="mb-6">
                     <div className="bg-white/5 rounded-xl p-6 text-center">
-                      <p className="text-slate-400 text-sm mb-2">Puntuación de Pronunciación</p>
+                      <p className="text-slate-400 text-sm mb-2">Puntuacion de Pronunciacion</p>
                       <span className={`text-5xl font-bold ${
                         result.accuracy_score >= 80 ? 'text-[#10b981]' : 
                         result.accuracy_score >= 60 ? 'text-[#f59e0b]' : 'text-[#ef4444]'
@@ -357,7 +338,7 @@ export const VoicePractice = () => {
                   <div className="mb-6">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertCircle size={18} className="text-[#f59e0b]" />
-                      <h3 className="font-semibold text-white">Retroalimentación</h3>
+                      <h3 className="font-semibold text-white">Retroalimentacion</h3>
                     </div>
                     <p className="text-slate-300 bg-white/5 rounded-xl p-4">
                       {result.pronunciation_feedback}
@@ -395,7 +376,7 @@ export const VoicePractice = () => {
                     Listo para grabar
                   </h3>
                   <p className="text-slate-400 max-w-sm">
-                    Presiona "Iniciar Grabación" para comenzar. Habla claramente y luego analiza tu pronunciación.
+                    Presiona "Iniciar Grabacion" para comenzar. Habla claramente y luego analiza tu pronunciacion.
                   </p>
                 </div>
               )}

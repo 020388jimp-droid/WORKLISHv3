@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -17,22 +17,22 @@ import { Button } from '../components/ui/button';
 import { Sidebar } from '../components/Sidebar';
 import { LevelSelector } from '../components/LevelSelector';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { getUser, getToken, getProgress, removeToken, removeUser } from '../lib/utils';
+import { getProgress } from '../lib/utils';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage, LANGUAGE_LEVELS } from '../contexts/LanguageContext';
 import { Toaster, toast } from 'sonner';
 
 export const Settings = () => {
   const navigate = useNavigate();
-  const user = getUser();
+  const { userProfile, logout, isAuthenticated } = useAuth();
   const progress = getProgress();
   const { t, level, setLevel, currentLevel } = useLanguage();
   const [showLevelDialog, setShowLevelDialog] = useState(false);
 
-  useEffect(() => {
-    if (!getToken()) {
-      navigate('/auth');
-    }
-  }, [navigate]);
+  if (!isAuthenticated) {
+    navigate('/auth');
+    return null;
+  }
 
   const handleExportProgress = () => {
     const data = JSON.stringify(progress, null, 2);
@@ -47,20 +47,24 @@ export const Settings = () => {
   };
 
   const handleClearProgress = () => {
-    if (window.confirm('¿Estás seguro de que quieres borrar todo tu progreso local?')) {
+    if (window.confirm('Estas seguro de que quieres borrar todo tu progreso local?')) {
       localStorage.removeItem('worklish_progress');
       toast.success(t('common.success'));
       window.location.reload();
     }
   };
 
-  const handleDeleteAccount = () => {
-    if (window.confirm('¿Estás seguro? Esta acción no se puede deshacer.')) {
-      removeToken();
-      removeUser();
-      localStorage.removeItem('worklish_progress');
-      toast.success(t('common.success'));
-      navigate('/');
+  const handleDeleteAccount = async () => {
+    if (window.confirm('Estas seguro? Esta accion no se puede deshacer.')) {
+      try {
+        await logout();
+        localStorage.removeItem('worklish_progress');
+        localStorage.removeItem('worklish_language_level');
+        toast.success(t('common.success'));
+        navigate('/');
+      } catch (error) {
+        toast.error('Error al eliminar la cuenta');
+      }
     }
   };
 
@@ -143,7 +147,6 @@ export const Settings = () => {
               </Dialog>
             </div>
 
-            {/* Level explanation */}
             <div className="mt-4 grid grid-cols-3 gap-3">
               {Object.values(LANGUAGE_LEVELS).map((lvl) => (
                 <div 
@@ -156,9 +159,9 @@ export const Settings = () => {
                 >
                   <p className="text-sm font-medium text-white mb-1">{lvl.name.es}</p>
                   <p className="text-xs text-slate-400">
-                    App: {lvl.appLanguage === 'es' ? '🇪🇸' : '🇬🇧'}
-                    {' • '}
-                    Feedback: {lvl.feedbackLanguage === 'es' ? '🇪🇸' : '🇬🇧'}
+                    App: {lvl.appLanguage === 'es' ? 'ES' : 'EN'}
+                    {' / '}
+                    Feedback: {lvl.feedbackLanguage === 'es' ? 'ES' : 'EN'}
                   </p>
                 </div>
               ))}
@@ -176,14 +179,14 @@ export const Settings = () => {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#06b6d4] flex items-center justify-center">
                   <span className="text-2xl font-bold text-white">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    {userProfile?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </span>
                 </div>
                 <div>
-                  <p className="text-xl font-semibold text-white">{user?.name || 'Usuario'}</p>
+                  <p className="text-xl font-semibold text-white">{userProfile?.name || 'Usuario'}</p>
                   <div className="flex items-center gap-2 text-slate-400">
                     <Mail size={14} />
-                    <span className="text-sm">{user?.email || 'email@example.com'}</span>
+                    <span className="text-sm">{userProfile?.email || 'email@example.com'}</span>
                   </div>
                 </div>
               </div>
@@ -200,13 +203,13 @@ export const Settings = () => {
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
               <div>
                 <p className="text-white font-medium capitalize">
-                  {t('settings.plan')} {user?.subscription_status || 'Trial'}
+                  {t('settings.plan')} {userProfile?.subscription_status || 'Trial'}
                 </p>
-                {user?.subscription_end && (
+                {userProfile?.subscription_end && (
                   <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
                     <Calendar size={14} />
                     <span>
-                      {t('settings.expires')}: {new Date(user.subscription_end).toLocaleDateString('es-ES')}
+                      {t('settings.expires')}: {new Date(userProfile.subscription_end).toLocaleDateString('es-ES')}
                     </span>
                   </div>
                 )}
