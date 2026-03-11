@@ -16,12 +16,12 @@ import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Configuración de Firebase - Proyecto WORKLISH
 const firebaseConfig = {
-  apiKey: "AIzaSyBd3loZCQXVSs7NR0pBTG7vwSAF_iH8LO8",
-  authDomain: "worklish-c9caf.firebaseapp.com",
-  projectId: "worklish-c9caf",
-  storageBucket: "worklish-c9caf.firebasestorage.app",
-  messagingSenderId: "271857970093",
-  appId: "1:271857970093:web:worklish"
+  apiKey: "AIzaSyAyJUV18GQwZLPE6xijn6zPPOOqIbKwSGc",
+  authDomain: "worklish-app-v2.firebaseapp.com",
+  projectId: "worklish-app-v2",
+  storageBucket: "worklish-app-v2.appspot.com",
+  messagingSenderId: "697729647513",
+  appId: "1:697729647513:web:3d2d5e394f9c8d5c3b5c3e"
 };
 
 // Inicializar Firebase
@@ -31,10 +31,10 @@ export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // URL de Cloud Functions (actualizar después del deploy)
-// En desarrollo local, usa: http://localhost:5001/worklish-c9caf/us-central1
-// En producción: https://us-central1-worklish-c9caf.cloudfunctions.net
+// En desarrollo local, usa: http://localhost:5001/worklish-app-v2/us-central1
+// En producción: https://us-central1-worklish-app-v2.cloudfunctions.net
 const FUNCTIONS_BASE_URL = process.env.REACT_APP_FUNCTIONS_URL || 
-  'https://us-central1-worklish-c9caf.cloudfunctions.net';
+  'https://us-central1-worklish-app-v2.cloudfunctions.net';
 
 // ============ AUTH FUNCTIONS ============
 
@@ -156,7 +156,7 @@ export const practiceVoice = async (audioBlob, expectedText, context) => {
   const formData = new FormData();
   formData.append('audio_file', audioBlob, 'recording.webm');
   if (expectedText) formData.append('expected_text', expectedText);
-  formData.append('context', context || 'business conversation');
+  formData.append('context', 'business conversation');
   
   const response = await fetch(`${FUNCTIONS_BASE_URL}/practiceVoice`, {
     method: 'POST',

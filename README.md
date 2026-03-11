@@ -33,101 +33,61 @@ worklish/
     └── public/
 ```
 
-## Despliegue en Firebase Studio
+## Notas de Desarrollo y Despliegue
 
-### 1. Importar desde GitHub
+### Arreglo del Layout del Dashboard (11/Mar/2026)
 
-1. Ve a [Firebase Studio](https://studio.firebase.google.com)
-2. Crea un nuevo proyecto o selecciona "worklish-c9caf"
-3. Conecta tu repositorio de GitHub
+Se identificó y solucionó un problema de layout en el dashboard que afectaba la visibilidad y el comportamiento de la barra lateral.
 
-### 2. Configurar Variables de Entorno
+**Problema:**
+- La barra lateral no era fija y, en pantallas con altura reducida (zoom o laptops), no era posible acceder a los últimos elementos del menú, como "Cerrar Sesión", porque la barra lateral no tenía scroll.
 
-Asegurate de que el archivo `functions/.env` contenga tu Gemini API key:
-```
-GEMINI_API_KEY=tu_clave_gemini_aqui
-```
+**Solución Implementada:**
+1.  **Se restauraron los archivos a su estado original** para eliminar modificaciones fallidas (`git checkout -- <file>`).
+2.  **Se hizo la barra lateral desplazable:** En `frontend/src/components/Sidebar.jsx`, se añadió la clase `overflow-y-auto` de Tailwind CSS al elemento `<aside>` principal. Esto asegura que aparezca un scroll vertical si el contenido excede la altura de la pantalla.
 
-### 3. Instalar Dependencias
+### Proceso de Despliegue Realizado
 
-```bash
-# Frontend
-cd frontend
-yarn install
+Estos son los pasos prácticos que se siguieron para poner en línea tanto el frontend como el backend desde el entorno de desarrollo.
 
-# Cloud Functions
-cd ../functions
-npm install
-```
+**Frontend (Firebase Hosting):**
+1.  **Navegar al directorio del frontend:**
+    ```bash
+    cd frontend
+    ```
+2.  **Compilar la aplicación de React:** Este comando crea una carpeta `build` con la versión optimizada y lista para producción.
+    ```bash
+    npm run build
+    ```
+3.  **Desplegar en Firebase Hosting:** Se utilizó la herramienta de despliegue del IDE, especificando la carpeta `frontend/build` como el directorio a publicar. Esto es equivalente a ejecutar:
+    ```bash
+    firebase deploy --only hosting
+    ```
 
-### 4. Build del Frontend
+**Backend (Firebase Functions):**
+1.  **Navegar al directorio de las funciones:**
+    ```bash
+    cd functions
+    ```
+2.  **Instalar dependencias:** Es crucial ejecutar este comando para instalar los paquetes de Node.js necesarios para que el backend funcione.
+    ```bash
+    npm install
+    ```
+3.  **Configurar Variables de Entorno:** Asegurarse de que el archivo `functions/.env` exista y contenga la clave de API necesaria.
+    ```
+    GEMINI_API_KEY=tu_clave_secreta_aqui
+    ```
+4.  **Desplegar las Cloud Functions:** Este comando sube y activa el código del backend en Firebase.
+    ```bash
+    firebase deploy --only functions
+    ```
 
-```bash
-cd frontend
-yarn build
-```
-
-### 5. Desplegar
-
-```bash
-# Desplegar todo (hosting + functions + firestore rules)
-firebase deploy
-
-# O desplegar individualmente:
-firebase deploy --only hosting
-firebase deploy --only functions
-firebase deploy --only firestore:rules
-firebase deploy --only firestore:indexes
-```
-
-## Desarrollo Local
+## Desarrollo Local (Original)
 
 ### Con Firebase Emulators
 
 ```bash
-# Iniciar emuladores de Firebase
 firebase emulators:start
-
-# En otra terminal, iniciar el frontend
-cd frontend
-yarn start
+cd frontend && yarn start
 ```
 
-Para usar emuladores locales, configura `REACT_APP_FUNCTIONS_URL` en `frontend/.env`:
-```
-REACT_APP_FUNCTIONS_URL=http://localhost:5001/worklish-c9caf/us-central1
-```
-
-## Funcionalidades
-
-### Practica de Escritura
-Escribe textos en ingles y recibe correcciones gramaticales, sugerencias de vocabulario y tips profesionales.
-
-### Entrenamiento de Voz
-Graba tu voz y recibe retroalimentacion sobre tu pronunciacion con transcripcion automatica.
-
-### Video Llamada con IA
-Practica conversaciones profesionales en escenarios reales (entrevistas, reuniones, presentaciones).
-
-### Niveles de Dificultad
-- **Principiante:** App en espanol, feedback en espanol
-- **Intermedio:** App en ingles, feedback en espanol
-- **Avanzado:** Todo en ingles (inmersion total)
-
-## APIs Utilizadas
-
-- **Google Gemini 1.5 Flash:** Correccion de texto, feedback de voz, conversacion IA
-- **Firebase Auth:** Autenticacion de usuarios
-- **Firestore:** Almacenamiento de perfiles y practicas
-- **Web Speech API:** Text-to-Speech para respuestas del AI tutor
-
-## Configuracion de Firebase
-
-El proyecto usa el proyecto Firebase `worklish-c9caf`. Para usar tu propio proyecto:
-
-1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com)
-2. Habilita Authentication (Email/Password + Google)
-3. Habilita Firestore
-4. Actualiza `frontend/src/lib/firebase.js` con tus credenciales
-5. Actualiza `.firebaserc` con tu project ID
-6. Obtiene una [Gemini API key](https://aistudio.google.com/apikey) y ponla en `functions/.env`

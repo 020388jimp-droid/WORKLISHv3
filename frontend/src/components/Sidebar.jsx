@@ -37,7 +37,7 @@ export const Sidebar = () => {
   return (
     <aside 
       data-testid="main-sidebar"
-      className="fixed left-0 top-0 h-full w-64 bg-[#0f0f1a] border-r border-white/5 flex flex-col z-50"
+      className="fixed left-0 top-0 h-screen w-64 bg-[#0b0b14] border-r border-[#1f1f2a] flex flex-col overflow-y-auto"
     >
       {/* Logo */}
       <div className="p-6 border-b border-white/5">

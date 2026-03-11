@@ -83,24 +83,6 @@ textarea:focus {
     scrollbar-width: none;
 }
 
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-    .ml-64 {
-        margin-left: 0 !important;
-    }
-    
-    .w-64 {
-        width: 100% !important;
-        position: fixed;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-    }
-    
-    .w-64.open {
-        transform: translateX(0);
-    }
-}
-
 /* Glassmorphism card effect */
 .glass-card {
     background: rgba(26, 26, 46, 0.8);
@@ -179,15 +161,4 @@ textarea:focus {
 
 .score-needs-work {
     color: #ef4444;
-}
-
-/* Responsive sidebar */
-@media (max-width: 1024px) {
-    aside[data-testid="main-sidebar"] {
-        display: none;
-    }
-    
-    main {
-        margin-left: 0 !important;
-    }
 }
