@@ -46,41 +46,30 @@ Se identificó y solucionó un problema de layout en el dashboard que afectaba l
 1.  **Se restauraron los archivos a su estado original** para eliminar modificaciones fallidas (`git checkout -- <file>`).
 2.  **Se hizo la barra lateral desplazable:** En `frontend/src/components/Sidebar.jsx`, se añadió la clase `overflow-y-auto` de Tailwind CSS al elemento `<aside>` principal. Esto asegura que aparezca un scroll vertical si el contenido excede la altura de la pantalla.
 
-### Proceso de Despliegue Realizado
+### Puesta en Marcha y Solución de Problemas (11/Mar/2026)
 
-Estos son los pasos prácticos que se siguieron para poner en línea tanto el frontend como el backend desde el entorno de desarrollo.
+Para lograr el despliegue completo y la correcta comunicación entre el frontend y el backend, se realizaron los siguientes ajustes críticos:
 
-**Frontend (Firebase Hosting):**
-1.  **Navegar al directorio del frontend:**
-    ```bash
-    cd frontend
-    ```
-2.  **Compilar la aplicación de React:** Este comando crea una carpeta `build` con la versión optimizada y lista para producción.
-    ```bash
-    npm run build
-    ```
-3.  **Desplegar en Firebase Hosting:** Se utilizó la herramienta de despliegue del IDE, especificando la carpeta `frontend/build` como el directorio a publicar. Esto es equivalente a ejecutar:
-    ```bash
-    firebase deploy --only hosting
-    ```
+1.  **Conexión Frontend-Backend:**
+    *   Se creó y configuró el archivo `frontend/.env` con las variables de entorno de la configuración de Firebase (`firebaseConfig`). Este paso es **fundamental** para que la aplicación React sepa a qué proyecto de Firebase conectarse.
 
-**Backend (Firebase Functions):**
-1.  **Navegar al directorio de las funciones:**
-    ```bash
-    cd functions
-    ```
-2.  **Instalar dependencias:** Es crucial ejecutar este comando para instalar los paquetes de Node.js necesarios para que el backend funcione.
-    ```bash
-    npm install
-    ```
-3.  **Configurar Variables de Entorno:** Asegurarse de que el archivo `functions/.env` exista y contenga la clave de API necesaria.
-    ```
-    GEMINI_API_KEY=tu_clave_secreta_aqui
-    ```
-4.  **Desplegar las Cloud Functions:** Este comando sube y activa el código del backend en Firebase.
-    ```bash
-    firebase deploy --only functions
-    ```
+2.  **Resolución de Conflictos de Dependencias (Frontend):**
+    *   Al ejecutar `npm install` en la carpeta `frontend`, la instalación falló debido a conflictos de versiones con dependencias pares (peer dependencies), principalmente relacionadas con `eslint`.
+    *   **Solución:** Se forzó la instalación utilizando la bandera `--legacy-peer-deps`, que ignora estos conflictos y permite completar la instalación. El comando ejecutado fue:
+        ```bash
+        npm install --prefix frontend --legacy-peer-deps
+        ```
+
+3.  **Configuración de `.gitignore`:**
+    *   Se detectó que el archivo `.gitignore` principal estaba vacío, lo que causaba que Git intentara subir archivos sensibles como `.env`.
+    *   **Solución:** Se creó un archivo `.gitignore` robusto en la raíz del proyecto para excluir carpetas como `node_modules`, archivos de compilación como `build`, y, muy importante, todos los archivos `.env`.
+
+4.  **Despliegue Final:**
+    *   Se compiló el frontend (`npm run build --prefix frontend`) y se desplegó en Firebase Hosting.
+    *   Se instalaron las dependencias del backend (`npm install --prefix functions`) y se desplegaron las Cloud Functions en Firebase.
+
+5.  **Commit y Documentación:**
+    *   Finalmente, se documentaron estos pasos en el `README.md` y se preparó el repositorio para un commit que refleja el estado 100% funcional del proyecto.
 
 ## Desarrollo Local (Original)
 
@@ -90,4 +79,3 @@ Estos son los pasos prácticos que se siguieron para poner en línea tanto el fr
 firebase emulators:start
 cd frontend && yarn start
 ```
-
