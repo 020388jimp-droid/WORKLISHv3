@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -17,14 +18,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Progress } from '../components/ui/progress';
 import { Sidebar } from '../components/Sidebar';
 import { updateProgress } from '../lib/utils';
-import { practiceText } from '../lib/firebase';
+// Quitamos la dependencia a ../lib/firebase para forzar la arquitectura correcta
+// import { practiceText } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
 
 export const TextPractice = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, currentUser } = useAuth(); // Necesitamos currentUser para el token
   const { t, feedbackLang } = useLanguage();
   const [text, setText] = useState('');
   const [context, setContext] = useState('professional email');
@@ -46,7 +48,7 @@ export const TextPractice = () => {
       return;
     }
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !currentUser) {
       navigate('/auth');
       return;
     }
@@ -55,16 +57,41 @@ export const TextPractice = () => {
     setResult(null);
 
     try {
-      const response = await practiceText(text, context, feedbackLang);
+      // ========= INICIO DE LA SOLUCIÓN DEL USUARIO =========
+      // Implementamos la llamada directa a la Cloud Function como usted indicó.
+      
+      const token = await currentUser.getIdToken();
+      const functionsUrl = 'https://us-central1-worklish-app-v2.cloudfunctions.net/practiceText';
+
+      const apiResponse = await fetch(functionsUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          text: text,
+          context: context,
+          feedback_language: feedbackLang
+        })
+      });
+
+      if (!apiResponse.ok) {
+        const errorData = await apiResponse.json();
+        throw new Error(errorData.error || 'An unknown error occurred.');
+      }
+
+      const response = await apiResponse.json();
+      // ========= FIN DE LA SOLUCIÓN DEL USUARIO =========
 
       setResult(response);
       
-      // Update local progress
       const avgScore = Math.round((response.grammar_score + response.vocabulary_score) / 2);
       updateProgress('text', avgScore);
       
       toast.success(t('common.success'));
     } catch (error) {
+      // El error que se muestre ahora vendrá DIRECTAMENTE del backend, como debe ser.
       toast.error(error.message || t('common.error'));
     } finally {
       setLoading(false);
