@@ -2,15 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Send, 
-  Loader2, 
-  CheckCircle, 
-  AlertCircle,
-  Lightbulb,
-  FileText,
-  RefreshCw
-} from 'lucide-react';
+import { Send, Loader as Loader2, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Lightbulb, FileText, RefreshCw } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
@@ -26,7 +18,7 @@ import { Toaster, toast } from 'sonner';
 
 export const TextPractice = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, currentUser } = useAuth(); // Necesitamos currentUser para el token
+  const { isAuthenticated, user: currentUser } = useAuth(); // Necesitamos currentUser para el token
   const { t, feedbackLang } = useLanguage();
   const [text, setText] = useState('');
   const [context, setContext] = useState('professional email');
