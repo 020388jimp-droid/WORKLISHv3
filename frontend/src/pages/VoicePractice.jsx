@@ -24,7 +24,7 @@ import { Toaster, toast } from 'sonner';
 
 export const VoicePractice = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -45,10 +45,10 @@ export const VoicePractice = () => {
   ];
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       navigate('/auth');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
     return () => {

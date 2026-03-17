@@ -30,7 +30,7 @@ import { Toaster, toast } from 'sonner';
 
 export const VideoCall = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const { feedbackLang } = useLanguage();
   const [isCallActive, setIsCallActive] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -74,10 +74,10 @@ export const VideoCall = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       navigate('/auth');
     }
-  }, [navigate, isAuthenticated]);
+  }, [navigate, isAuthenticated, authLoading]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

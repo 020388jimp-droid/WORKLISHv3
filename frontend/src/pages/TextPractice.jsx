@@ -1,6 +1,5 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Send, Loader as Loader2, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Lightbulb, FileText, RefreshCw } from 'lucide-react';
 import { Card } from '../components/ui/card';
@@ -10,15 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Progress } from '../components/ui/progress';
 import { Sidebar } from '../components/Sidebar';
 import { updateProgress } from '../lib/utils';
-// Quitamos la dependencia a ../lib/firebase para forzar la arquitectura correcta
-// import { practiceText } from '../lib/firebase';
+import { practiceText } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
 
 export const TextPractice = () => {
-  const navigate = useNavigate();
-  const { isAuthenticated, user: currentUser } = useAuth(); // Necesitamos currentUser para el token
+  const { isAuthenticated } = useAuth();
   const { t, feedbackLang } = useLanguage();
   const [text, setText] = useState('');
   const [context, setContext] = useState('professional email');
@@ -40,8 +37,8 @@ export const TextPractice = () => {
       return;
     }
 
-    if (!isAuthenticated || !currentUser) {
-      navigate('/auth');
+    if (!isAuthenticated) {
+      toast.error('Debes iniciar sesión para analizar texto.');
       return;
     }
 
@@ -49,32 +46,7 @@ export const TextPractice = () => {
     setResult(null);
 
     try {
-      // ========= INICIO DE LA SOLUCIÓN DEL USUARIO =========
-      // Implementamos la llamada directa a la Cloud Function como usted indicó.
-      
-      const token = await currentUser.getIdToken();
-      const functionsUrl = 'https://us-central1-worklish-app-v2.cloudfunctions.net/practiceText';
-
-      const apiResponse = await fetch(functionsUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          text: text,
-          context: context,
-          feedback_language: feedbackLang
-        })
-      });
-
-      if (!apiResponse.ok) {
-        const errorData = await apiResponse.json();
-        throw new Error(errorData.error || 'An unknown error occurred.');
-      }
-
-      const response = await apiResponse.json();
-      // ========= FIN DE LA SOLUCIÓN DEL USUARIO =========
+      const response = await practiceText(text, context, feedbackLang);
 
       setResult(response);
       
@@ -83,7 +55,7 @@ export const TextPractice = () => {
       
       toast.success(t('common.success'));
     } catch (error) {
-      // El error que se muestre ahora vendrá DIRECTAMENTE del backend, como debe ser.
+      console.error('TextPractice error:', error);
       toast.error(error.message || t('common.error'));
     } finally {
       setLoading(false);
