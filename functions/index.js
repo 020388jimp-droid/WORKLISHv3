@@ -155,9 +155,7 @@ Respond ONLY with valid JSON (no markdown, no backticks):
 // =======================================================
 
 exports.practiceVoice = onRequest(async (req, res) => {
-
     cors(req, res, async () => {
-
       if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
       }
@@ -166,75 +164,113 @@ exports.practiceVoice = onRequest(async (req, res) => {
         const user = await verifyAuth(req);
 
         // Parsear multipart/form-data con Busboy
-        const { expectedText, context } = await new Promise((resolve, reject) => {
+        const { expectedText, context, audioBuffer, feedbackLanguage } = await new Promise((resolve, reject) => {
           const bb = Busboy({ headers: req.headers });
-          let expectedText = '';
-          let context = 'business conversation';
-          let audioBuffer = null;
+          let _expectedText = '';
+          let _context = 'business conversation';
+          let _audioBuffer = null;
+          let _feedbackLanguage = 'es';
+          const filePromises = [];
 
-          bb.on('file', (name, file) => {
+          bb.on('file', (name, file, info) => {
+            console.log(`Receiving file: ${name}`);
             const chunks = [];
-            file.on('data', chunk => chunks.push(chunk));
-            file.on('end', () => {
-              audioBuffer = Buffer.concat(chunks);
+            const filePromise = new Promise((fileResolve) => {
+              file.on('data', chunk => chunks.push(chunk));
+              file.on('end', () => {
+                _audioBuffer = Buffer.concat(chunks);
+                console.log(`File ${name} received, size: ${_audioBuffer.length} bytes`);
+                fileResolve();
+              });
+              file.on('error', (err) => {
+                console.error(`File ${name} error:`, err);
+                fileResolve(); // Resolve anyway to not hang
+              });
             });
+            filePromises.push(filePromise);
           });
 
           bb.on('field', (name, val) => {
-            if (name === 'expected_text') expectedText = val;
-            if (name === 'context') context = val;
+            if (name === 'expected_text') _expectedText = val;
+            if (name === 'context') _context = val;
+            if (name === 'feedback_language') _feedbackLanguage = val;
           });
 
-          bb.on('close', () => resolve({ expectedText, context, audioBuffer }));
-          bb.on('error', reject);
+          bb.on('close', async () => {
+            try {
+              await Promise.all(filePromises);
+              console.log("Busboy parsing complete.");
+              resolve({ 
+                expectedText: _expectedText, 
+                context: _context, 
+                audioBuffer: _audioBuffer,
+                feedbackLanguage: _feedbackLanguage 
+              });
+            } catch (err) {
+              reject(err);
+            }
+          });
 
-          req.pipe(bb);
+          bb.on('error', (err) => {
+            console.error("Busboy instance error:", err);
+            reject(err);
+          });
+
+          // En Cloud Functions, usar rawBody si está disponible para evitar problemas de stream
+          if (req.rawBody) {
+            bb.end(req.rawBody);
+          } else {
+            req.pipe(bb);
+          }
         });
+
 
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-        const feedbackLang = req.body?.feedback_language || 'es';
-        const langInstruction = feedbackLang === 'es'
-          ? 'Provide all feedback and tips in SPANISH.'
-          : 'Provide all feedback and tips in English.';
+        const langInstruction = feedbackLanguage === 'en'
+          ? 'Provide all feedback and tips in English.'
+          : 'Provide all feedback and tips in SPANISH (español).';
 
-        // Ya que no podemos transcribir audio directamente con Gemini en esta versión,
-        // usamos el expected_text como referencia y simulamos análisis de pronunciación
-        const prompt = expectedText
-          ? `
+        const prompt = `
 You are a professional English pronunciation coach.
+Analyze the provided audio recording.
 
-The student was supposed to say: "${expectedText}"
+${expectedText ? `The student was trying to say: "${expectedText}"` : 'The student is practicing professional English.'}
+Context: ${context}
 
-Analyze their pronunciation attempt and provide feedback.
+Task:
+1. Transcribe what the student actually said.
+2. Rate their accuracy (0-100).
+3. Provide helpful feedback on their pronunciation, stress, and intonation.
+4. Give 2-3 specific tips to improve.
+
 ${langInstruction}
 
-Respond ONLY with valid JSON (no markdown, no backticks):
-
+Respond ONLY with valid JSON:
 {
-  "transcribed_text": "${expectedText}",
-  "accuracy_score": 75,
+  "transcribed_text": "...",
+  "accuracy_score": 0,
   "pronunciation_feedback": "...",
   "tips": ["...", "..."]
 }
-`
-          : `
-You are a professional English pronunciation coach.
-
-The student recorded an audio for business English practice.
-${langInstruction}
-
-Respond ONLY with valid JSON (no markdown, no backticks):
-
-{
-  "transcribed_text": "Audio received and analyzed",
-  "accuracy_score": 70,
-  "pronunciation_feedback": "Your pronunciation shows good effort. Focus on clear enunciation of consonants at the end of words.",
-  "tips": ["Practice linking words together", "Focus on sentence stress and rhythm", "Record yourself and compare with native speakers"]
-}
 `;
 
-        const result = await model.generateContent(prompt);
+        let result;
+        if (audioBuffer) {
+          result = await model.generateContent([
+            prompt,
+            {
+              inlineData: {
+                data: audioBuffer.toString('base64'),
+                mimeType: 'audio/webm'
+              }
+            }
+          ]);
+        } else {
+          // Fallback if no audio (should not happen normally)
+          result = await model.generateContent(prompt);
+        }
+
         const responseText = (await result.response).text();
         const data = parseGeminiJSON(responseText);
 
@@ -242,8 +278,10 @@ Respond ONLY with valid JSON (no markdown, no backticks):
         await db.collection('practices').add({
           userId: user.uid,
           type: 'voice',
+          context: context || 'business conversation',
           expected_text: expectedText || '',
-          accuracy_score: data.accuracy_score,
+          transcribed_text: data.transcribed_text,
+          accuracy_score: data.accuracy_score || 0,
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 

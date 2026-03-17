@@ -189,7 +189,7 @@ export const practiceText = async (text, context, feedbackLanguage) => {
 
 };
 
-export const practiceVoice = async (audioBlob, expectedText, context) => {
+export const practiceVoice = async (audioBlob, expectedText, context, feedbackLanguage = 'es') => {
 
   const token = await getAuthToken();
 
@@ -199,9 +199,11 @@ export const practiceVoice = async (audioBlob, expectedText, context) => {
 
   if (expectedText) formData.append("expected_text", expectedText);
 
-  formData.append("context", "business conversation");
+  formData.append("context", context || "business conversation");
+  formData.append("feedback_language", feedbackLanguage);
 
   const response = await fetch(`${FUNCTIONS_BASE_URL}/practiceVoice`, {
+
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`

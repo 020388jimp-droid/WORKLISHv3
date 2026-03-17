@@ -19,18 +19,21 @@ import { Progress } from '../components/ui/progress';
 import { Sidebar } from '../components/Sidebar';
 import { updateProgress } from '../lib/utils';
 import { practiceVoice } from '../lib/firebase';
+import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
 
 export const VoicePractice = () => {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { feedbackLang } = useLanguage();
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [expectedText, setExpectedText] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
+
   
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -111,8 +114,15 @@ export const VoicePractice = () => {
     setLoading(true);
 
     try {
-      const data = await practiceVoice(audioBlob, expectedText.trim() || null, 'business conversation');
+      const data = await practiceVoice(
+        audioBlob, 
+        expectedText.trim() || null, 
+        'business conversation',
+        feedbackLang
+      );
+
       setResult(data);
+
       updateProgress('voice', data.accuracy_score);
       toast.success('Analisis completado!');
     } catch (error) {
