@@ -7,13 +7,14 @@ import {
   Settings, 
   LogOut,
   Flame,
-  Crown
+  Crown,
+  X
 } from 'lucide-react';
 import { getProgress } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
 import { Progress } from './ui/progress';
 
-export const Sidebar = () => {
+export const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userProfile, logout } = useAuth();
@@ -35,94 +36,112 @@ export const Sidebar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <aside 
-      data-testid="main-sidebar"
-      className="fixed left-0 top-0 h-screen w-64 bg-[#0b0b14] border-r border-[#1f1f2a] flex flex-col overflow-y-auto"
-    >
-      {/* Logo */}
-      <div className="p-6 border-b border-white/5">
-        <Link to="/dashboard" className="flex items-center gap-2">
-          <span className="text-2xl font-bold font-['Outfit'] text-white">
-            Work<span className="text-[#7c3aed]">lish</span>
-          </span>
-        </Link>
-      </div>
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
 
-      {/* User info */}
-      <div className="p-6 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#06b6d4] flex items-center justify-center">
-            <span className="text-white font-semibold">
-              {userProfile?.name?.charAt(0)?.toUpperCase() || 'U'}
+      <aside 
+        data-testid="main-sidebar"
+        className={`fixed left-0 top-0 h-screen w-64 bg-[#0b0b14] border-r border-[#1f1f2a] flex flex-col overflow-y-auto z-50 transition-transform duration-300 transform 
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+      >
+        {/* Logo & Close */}
+        <div className="p-6 border-b border-white/5 flex items-center justify-between">
+          <Link to="/dashboard" className="flex items-center gap-2" onClick={onClose}>
+            <span className="text-2xl font-bold font-['Outfit'] text-white">
+              Work<span className="text-[#7c3aed]">lish</span>
             </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-medium truncate">{userProfile?.name || 'Usuario'}</p>
-            <div className="flex items-center gap-1 text-xs text-[#06b6d4]">
-              <Crown size={12} />
-              <span className="capitalize">{userProfile?.subscription_status || 'Trial'}</span>
+          </Link>
+          <button 
+            onClick={onClose}
+            className="lg:hidden p-2 text-slate-400 hover:text-white"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* User info */}
+        <div className="p-6 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#06b6d4] flex items-center justify-center">
+              <span className="text-white font-semibold">
+                {userProfile?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white font-medium truncate">{userProfile?.name || 'Usuario'}</p>
+              <div className="flex items-center gap-1 text-xs text-[#06b6d4]">
+                <Crown size={12} />
+                <span className="capitalize">{userProfile?.subscription_status || 'Trial'}</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Streak */}
-        <div className="mt-4 flex items-center gap-2 text-sm">
-          <div className="flex items-center gap-1 text-orange-400">
-            <Flame size={16} className="fill-orange-400" />
-            <span className="font-bold">{progress.streak || 0}</span>
+          {/* Streak */}
+          <div className="mt-4 flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-1 text-orange-400">
+              <Flame size={16} className="fill-orange-400" />
+              <span className="font-bold">{progress.streak || 0}</span>
+            </div>
+            <span className="text-slate-400">días de racha</span>
           </div>
-          <span className="text-slate-400">días de racha</span>
         </div>
-      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            data-testid={`nav-${item.path.split('/').pop()}`}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-              isActive(item.path)
-                ? 'bg-[#7c3aed]/20 text-[#7c3aed] border border-[#7c3aed]/30'
-                : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1">
+          {navItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={onClose}
+              data-testid={`nav-${item.path.split('/').pop()}`}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                isActive(item.path)
+                  ? 'bg-[#7c3aed]/20 text-[#7c3aed] border border-[#7c3aed]/30'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <item.icon size={20} />
+              <span className="font-medium">{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Daily progress */}
+        <div className="p-4 mx-4 mb-4 rounded-xl bg-[#1a1a2e] border border-white/5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-slate-400">Progreso diario</span>
+            <span className="text-sm font-bold text-[#06b6d4]">
+              {Math.min(100, (progress.textSessions + progress.voiceSessions + progress.videoSessions) * 20)}%
+            </span>
+          </div>
+          <Progress 
+            value={Math.min(100, (progress.textSessions + progress.voiceSessions + progress.videoSessions) * 20)} 
+            className="h-2 bg-white/10"
+          />
+          <p className="text-xs text-slate-500 mt-2">
+            Meta: 5 sesiones diarias
+          </p>
+        </div>
+
+        {/* Logout */}
+        <div className="p-4 border-t border-white/5">
+          <button
+            onClick={handleLogout}
+            data-testid="sidebar-logout"
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >
-            <item.icon size={20} />
-            <span className="font-medium">{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      {/* Daily progress */}
-      <div className="p-4 mx-4 mb-4 rounded-xl bg-[#1a1a2e] border border-white/5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-slate-400">Progreso diario</span>
-          <span className="text-sm font-bold text-[#06b6d4]">
-            {Math.min(100, (progress.textSessions + progress.voiceSessions + progress.videoSessions) * 20)}%
-          </span>
+            <LogOut size={20} />
+            <span className="font-medium">Cerrar Sesión</span>
+          </button>
         </div>
-        <Progress 
-          value={Math.min(100, (progress.textSessions + progress.voiceSessions + progress.videoSessions) * 20)} 
-          className="h-2 bg-white/10"
-        />
-        <p className="text-xs text-slate-500 mt-2">
-          Meta: 5 sesiones diarias
-        </p>
-      </div>
-
-      {/* Logout */}
-      <div className="p-4 border-t border-white/5">
-        <button
-          onClick={handleLogout}
-          data-testid="sidebar-logout"
-          className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
-        >
-          <LogOut size={20} />
-          <span className="font-medium">Cerrar Sesión</span>
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 };
 

@@ -11,6 +11,9 @@ import VoicePractice from "./pages/VoicePractice";
 import VideoCall from "./pages/VideoCall";
 import Settings from "./pages/Settings";
 
+// Components
+import { DashboardLayout } from "./components/DashboardLayout";
+
 // Context
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -51,7 +54,9 @@ function AppRoutes() {
           path="/dashboard" 
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <DashboardLayout>
+                <Dashboard />
+              </DashboardLayout>
             </ProtectedRoute>
           } 
         />
@@ -59,7 +64,9 @@ function AppRoutes() {
           path="/practice/text" 
           element={
             <ProtectedRoute>
-              <TextPractice />
+              <DashboardLayout>
+                <TextPractice />
+              </DashboardLayout>
             </ProtectedRoute>
           } 
         />
@@ -67,7 +74,9 @@ function AppRoutes() {
           path="/practice/voice" 
           element={
             <ProtectedRoute>
-              <VoicePractice />
+              <DashboardLayout>
+                <VoicePractice />
+              </DashboardLayout>
             </ProtectedRoute>
           } 
         />
@@ -75,7 +84,9 @@ function AppRoutes() {
           path="/practice/video" 
           element={
             <ProtectedRoute>
-              <VideoCall />
+              <DashboardLayout>
+                <VideoCall />
+              </DashboardLayout>
             </ProtectedRoute>
           } 
         />
@@ -83,10 +94,13 @@ function AppRoutes() {
           path="/settings" 
           element={
             <ProtectedRoute>
-              <Settings />
+              <DashboardLayout>
+                <Settings />
+              </DashboardLayout>
             </ProtectedRoute>
           } 
         />
+
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
