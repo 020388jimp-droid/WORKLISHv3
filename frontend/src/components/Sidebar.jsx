@@ -29,7 +29,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/practice/text', icon: PenTool, label: 'Escritura' },
     { path: '/practice/voice', icon: Mic, label: 'Pronunciación' },
-    { path: '/practice/video', icon: Video, label: 'Video Call' },
+    { path: '/practice/video', icon: Video, label: 'Tutor IA' },
     { path: '/settings', icon: Settings, label: 'Configuración' },
   ];
 
