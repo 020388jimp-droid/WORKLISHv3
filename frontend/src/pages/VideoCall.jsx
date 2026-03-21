@@ -21,6 +21,7 @@ import {
 import { Card } from '../components/ui/card.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { useAuth } from '../contexts/AuthContext';
+import { generateSpeech } from '../lib/firebase';
 import { Toaster, toast } from 'sonner';
 
 const WORK_TOPICS = [
@@ -82,6 +83,18 @@ export const VideoCall = () => {
     window.speechSynthesis.speak(utterance);
   }, [tutorMuted, currentLevel]);
 
+  const playTutorAudio = useCallback(async (textToPlay) => {
+    if (tutorMuted) return;
+    try {
+      const { audioContent } = await generateSpeech(textToPlay, userProfile?.preferred_voice || 'orion');
+      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+      await audio.play();
+    } catch (err) {
+      console.error("New audio engine failed, falling back to local TTS:", err);
+      speakTutor(textToPlay);
+    }
+  }, [tutorMuted, userProfile, speakTutor]);
+
   // INTELIGENCIA LOCAL (Sin errores 404)
   const processMessage = useCallback((text) => {
     if (!text || !text.trim()) return;
@@ -99,9 +112,9 @@ export const VideoCall = () => {
         response = `¡Qué bien suena eso en inglés! Lo has pronunciado perfecto. ¿Cómo aplicarías ese mismo concepto para la situación de "${customTopic}"?`;
       }
       setMessages(prev => [...prev, { role: 'assistant', text: response }]);
-      speakTutor(response);
+      playTutorAudio(response);
     }, 1000);
-  }, [customTopic, speakTutor]);
+  }, [customTopic, playTutorAudio]);
 
   const toggleRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -148,7 +161,7 @@ export const VideoCall = () => {
         ? `¡Hola! Soy tu tutor IA personal. Vamos a practicar "${customTopic}". Pulsa el micro para hablar.` 
         : `Hi there! I'm your AI Language Tutor. Let's practice "${customTopic}". Click the mic button above to start your practice.`;
       setMessages([{ role: 'assistant', text: intro }]);
-      setTimeout(() => speakTutor(intro), 800);
+      setTimeout(() => playTutorAudio(intro), 800);
       timerRef.current = setInterval(() => setCallTime(p => p + 1), 1000);
     } catch (e) { toast.error('Permisos denegados.'); }
     setLoading(false);

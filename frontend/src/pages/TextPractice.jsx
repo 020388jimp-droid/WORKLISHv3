@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Send, 
@@ -17,13 +18,14 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Progress } from '../components/ui/progress';
 import { updateProgress } from '../lib/utils';
-import { practiceText } from '../lib/firebase';
+import { practiceText, generateSpeech } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
 
 export const TextPractice = () => {
-  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, userProfile } = useAuth();
   const { t, feedbackLang } = useLanguage();
   const [text, setText] = useState('');
   const [context, setContext] = useState('professional email');
@@ -65,6 +67,21 @@ export const TextPractice = () => {
     window.speechSynthesis.speak(utterance);
   }, [isAudioEnabled]);
 
+  const playTutorAudio = async (textToPlay) => {
+    if (!isAudioEnabled) return;
+    try {
+      const { audioContent } = await generateSpeech(textToPlay, userProfile?.preferred_voice || 'orion');
+      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+      await audio.play();
+    } catch (err) {
+      console.error("New audio engine failed:", err);
+      toast.error(`Motor Premium: ${err.message || 'Fallo de conexión'}`);
+      // Limpieza de emergencia para el robot de respaldo
+      const cleanText = textToPlay.replace(/\*+/g, '');
+      speak(cleanText);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!text.trim()) {
       toast.error(t('common.error'));
@@ -81,7 +98,11 @@ export const TextPractice = () => {
 
     try {
       const response = await practiceText(text, context, feedbackLang);
-      setResult(response);
+      // Limpiar comillas iniciales de los consejos
+      const cleanTips = response.tips.map(tip => tip.replace(/^"|"$/g, '').trim());
+      const cleanResponse = { ...response, tips: cleanTips };
+      
+      setResult(cleanResponse);
       
       const avgScore = Math.round((response.grammar_score + response.vocabulary_score) / 2);
       updateProgress('text', avgScore);
@@ -89,8 +110,8 @@ export const TextPractice = () => {
 
       // Leer feedback si el audio está activado
       if (isAudioEnabled) {
-        const feedbackToSpeak = `Tu puntaje es ${avgScore} por ciento. Aquí tienes unos consejos: ${response.tips.join('. ')}`;
-        setTimeout(() => speak(feedbackToSpeak), 500);
+        const feedbackText = `Gramática: ${response.grammar_score}. Vocabulario: ${response.vocabulary_score}. Consejos: ${cleanTips.join('. ')}`;
+        playTutorAudio(feedbackText);
       }
     } catch (error) {
       toast.error(error.message || t('common.error'));
@@ -207,7 +228,17 @@ export const TextPractice = () => {
                 </div>
 
                 <div>
-                   <h3 className="text-white font-black text-xs uppercase tracking-widest mb-4 flex items-center gap-2 text-[#f59e0b]"><Lightbulb size={16}/> Consejos Pro</h3>
+                   <div className="flex items-center justify-between mb-2">
+                     <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 text-[#f59e0b]"><Lightbulb size={14}/> Consejos de Mejora</h3>
+                     <Button 
+                       onClick={() => playTutorAudio(result.tips.join('. '))}
+                       variant="ghost" 
+                       size="sm"
+                       className="text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                     >
+                       <Volume2 size={16} className="mr-1"/> Escuchar
+                     </Button>
+                   </div>
                    <div className="space-y-4">
                      {result.tips.map((tip, index) => (
                        <div key={index} className="flex items-start gap-4 bg-white/[0.03] border border-white/5 rounded-2xl p-4 group hover:bg-white/[0.05] transition-all">

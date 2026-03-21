@@ -22,7 +22,7 @@ import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Progress } from '../components/ui/progress';
 import { updateProgress } from '../lib/utils';
-import { practiceVoice } from '../lib/firebase';
+import { practiceVoice, generateSpeech } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
@@ -75,6 +75,21 @@ export const VoicePractice = () => {
     window.speechSynthesis.speak(utterance);
   }, [isAudioEnabled]);
 
+  const playTutorAudio = async (textToPlay) => {
+    if (!isAudioEnabled) return;
+    try {
+      const { audioContent } = await generateSpeech(textToPlay, userProfile?.preferred_voice || 'orion');
+      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+      await audio.play();
+    } catch (err) {
+      console.error("New audio engine failed, falling back to local TTS:", err);
+      toast.error(`Motor Premium: ${err.message || 'Fallo de conexión'}`);
+      // Limpieza de emergencia para el robot de respaldo
+      const cleanText = textToPlay.replace(/\*+/g, '');
+      speak(cleanText);
+    }
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -113,7 +128,17 @@ export const VoicePractice = () => {
 
     try {
       const data = await practiceVoice(audioBlob, expectedText.trim() || null, 'business', feedbackLang);
-      setResult(data);
+      // Limpiar consejos y feedback para UI y Voz
+      const cleanTips = (data.tips || []).map(tip => tip.replace(/^"|"$/g, '').trim());
+      const cleanFeedback = data.pronunciation_feedback?.replace(/^"|"$/g, '').trim() || '';
+      
+      const cleanData = { 
+        ...data, 
+        tips: cleanTips, 
+        pronunciation_feedback: cleanFeedback 
+      };
+
+      setResult(cleanData);
 
       try {
         updateProgress('voice', data.accuracy_score);
@@ -124,8 +149,8 @@ export const VoicePractice = () => {
       toast.success('¡Análisis completado!');
 
       if (isAudioEnabled) {
-        const scoreFeedback = `Tu puntaje es de ${data.accuracy_score} por ciento. ${data.pronunciation_feedback}`;
-        setTimeout(() => speak(scoreFeedback), 600);
+        const scoreFeedback = `Tu puntaje es de ${data.accuracy_score} por ciento. ${cleanFeedback}`;
+        setTimeout(() => playTutorAudio(scoreFeedback), 600);
       }
     } catch (error) {
       console.error("AI Analysis failed:", error);
@@ -256,7 +281,7 @@ export const VoicePractice = () => {
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 text-[#f59e0b]"><Lightbulb size={14}/> Feedback del Tutor</h3>
                         <Button 
-                           onClick={() => speak(`Tu puntaje es de ${result.accuracy_score} por ciento. ${result.pronunciation_feedback}`)}
+                           onClick={() => playTutorAudio(`Tu puntaje es de ${result.accuracy_score} por ciento. ${result.pronunciation_feedback}`)}
                            variant="ghost" 
                            size="sm"
                            className="text-[#f59e0b] hover:bg-[#f59e0b]/10 p-2 h-auto"

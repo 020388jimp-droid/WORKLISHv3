@@ -10,7 +10,9 @@ import {
   Trash2,
   Download,
   Globe,
-  BookOpen
+  BookOpen,
+  Volume2,
+  Sparkles
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -23,7 +25,7 @@ import { Toaster, toast } from 'sonner';
 
 export const Settings = () => {
   const navigate = useNavigate();
-  const { userProfile, logout, isAuthenticated } = useAuth();
+  const { userProfile, updateProfile, logout, isAuthenticated } = useAuth();
   const progress = getProgress();
   const { t, level, setLevel, currentLevel } = useLanguage();
   const [showLevelDialog, setShowLevelDialog] = useState(false);
@@ -61,16 +63,21 @@ export const Settings = () => {
         localStorage.removeItem('worklish_language_level');
         toast.success(t('common.success'));
         navigate('/');
-      } catch (error) {
+       } catch (error) {
         toast.error('Error al eliminar la cuenta');
       }
     }
   };
 
-  const handleLevelChange = (newLevel) => {
-    setLevel(newLevel);
-    setShowLevelDialog(false);
-    toast.success('Nivel actualizado');
+  const handleLevelChange = async (newLevel) => {
+    try {
+      await updateProfile({ language_level: newLevel });
+      setLevel(newLevel);
+      setShowLevelDialog(false);
+      toast.success('Nivel actualizado');
+    } catch (err) {
+      toast.error('Error al actualizar nivel');
+    }
   };
 
   return (
@@ -165,6 +172,60 @@ export const Settings = () => {
           </div>
         </Card>
 
+        {/* Tutor AI Voice Select */}
+        <Card className="bg-[#1a1a2e] border-white/5 p-6 shadow-2xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#7c3aed]/10 blur-3xl rounded-full -z-10" />
+          
+          <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+            <Volume2 size={22} className="text-[#7c3aed]" />
+            Voz del Tutor IA (Gemini Professional)
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { id: 'orion', name: 'Orion', desc: 'Alegre • Voz más grave', color: 'bg-blue-500/20 text-blue-400' },
+              { id: 'pegasus', name: 'Pegasus', desc: 'Calma • Voz más grave', color: 'bg-emerald-500/20 text-emerald-400' },
+              { id: 'ursa', name: 'Ursa', desc: 'Comprometida • Tono medio', color: 'bg-purple-500/20 text-purple-400' },
+              { id: 'nova', name: 'Nova', desc: 'Sutil • Tono medio', color: 'bg-orange-500/20 text-orange-400' },
+              { id: 'eclipse', name: 'Eclipse', desc: 'Energética • Tono medio', color: 'bg-[#06b6d4]/20 text-[#06b6d4]' }
+            ].map((voice) => (
+              <motion.div
+                key={voice.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={async () => {
+                  try {
+                    await updateProfile({ preferred_voice: voice.id });
+                    toast.success(`Voz ${voice.name} seleccionada`);
+                  } catch (err) {
+                    toast.error('Error al guardar preferencia');
+                  }
+                }}
+                className={`flex flex-col p-4 rounded-2xl cursor-pointer transition-all border-2 ${
+                  (userProfile?.preferred_voice || 'orion') === voice.id 
+                    ? 'border-[#7c3aed] bg-[#7c3aed]/10 shadow-[0_0_20px_rgba(124,58,237,0.2)]' 
+                    : 'border-white/5 bg-white/[0.03] hover:bg-white/[0.08]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-black text-white text-lg tracking-tight">{voice.name}</span>
+                  {(userProfile?.preferred_voice || 'orion') === voice.id && (
+                    <Sparkles size={16} className="text-[#06b6d4] animate-pulse" />
+                  )}
+                </div>
+                <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full self-start mb-1 ${voice.color}`}>
+                  {voice.desc.split(' • ')[0]}
+                </span>
+                <p className="text-slate-500 text-xs font-medium">{voice.desc.split(' • ')[1]}</p>
+              </motion.div>
+            ))}
+          </div>
+          
+          <p className="mt-6 text-[11px] text-slate-500 font-medium italic border-t border-white/5 pt-4">
+            * Estas voces utilizan la tecnología de Google Cloud Studio para ofrecer una pronunciación bilingüe (Español/Inglés) natural.
+          </p>
+        </Card>
+
         {/* Profile */}
         <Card className="bg-[#1a1a2e] border-white/5 p-6">
           <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
@@ -220,7 +281,7 @@ export const Settings = () => {
         {/* Data Management */}
         <Card className="bg-[#1a1a2e] border-white/5 p-6">
           <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-            <Shield size={20} className="text-[#06b6d4]" />
+             <Shield size={20} className="text-[#06b6d4]" />
             {t('settings.dataPrivacy')}
           </h2>
           

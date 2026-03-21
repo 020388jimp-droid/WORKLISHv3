@@ -77,6 +77,7 @@ export const registerWithEmail = async (email, password, name) => {
     subscription_status: "trial",
     subscription_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     language_level: "beginner",
+    preferred_voice: "orion",
     created_at: new Date().toISOString()
   });
 
@@ -99,6 +100,7 @@ export const loginWithGoogle = async () => {
       subscription_status: "trial",
       subscription_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       language_level: "beginner",
+      preferred_voice: "orion",
       created_at: new Date().toISOString()
     });
 
@@ -265,6 +267,13 @@ export const updateSubscription = async (plan) => {
     body: JSON.stringify({ plan })
   });
 
+};
+
+export const generateSpeech = async (text, voiceId) => {
+  return apiRequest("generateSpeech", {
+    method: "POST",
+    body: JSON.stringify({ text, voiceId })
+  });
 };
 
 export default app;

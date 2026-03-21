@@ -4,6 +4,7 @@ const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const cors = require('cors')({ origin: true });
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const textToSpeech = require('@google-cloud/text-to-speech');
 const Busboy = require('busboy');
 
 // INICIALIZAR FIREBASE ADMIN
@@ -22,6 +23,14 @@ if (!GEMINI_API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+// CONFIGURACIÓN DE CREDENCIALES GOOGLE CLOUD:
+// 1. Ve a Google Cloud Console -> APIs y Servicios -> Credenciales.
+// 2. Crea una Cuenta de Servicio con el rol "Cloud Text-to-Speech API User".
+// 3. Descarga el archivo JSON de la clave.
+// 4. En Producción (Firebase), las funciones detectarán la cuenta de servicio automáticamente.
+// 5. Para desarrollo local, usa: export GOOGLE_APPLICATION_CREDENTIALS="ruta/a/tu/clave.json"
+const ttsClient = new textToSpeech.TextToSpeechClient();
 
 setGlobalOptions({
   maxInstances: 20,
@@ -102,6 +111,11 @@ exports.practiceText = onRequest(async (req, res) => {
 
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
+        const formattingRule = 
+          feedbackLang === 'es'
+            ? 'STRICT FORMATTING RULE: In your tips, always wrap English words/phrases in parentheses like (English word). NEVER use parentheses for Spanish text. Spanish titles should be bold like **Título:** without parentheses.'
+            : 'Wrap English examples in parentheses like (example).';
+
         const prompt = `
 You are a professional English business writing coach.
 
@@ -112,6 +126,7 @@ Review and correct this text:
 Context: ${context || 'email'}.
 
 ${tipsInstruction}
+${formattingRule}
 
 Respond ONLY with valid JSON (no markdown, no backticks):
 
@@ -231,6 +246,11 @@ exports.practiceVoice = onRequest(async (req, res) => {
           ? 'Provide all feedback and tips in English.'
           : 'Provide all feedback and tips in SPANISH (español).';
 
+        const formattingRule = 
+          feedbackLanguage === 'en'
+            ? 'Wrap English examples in parentheses like (example).'
+            : 'STRICT FORMATTING RULE: In your feedback and tips, always wrap English words/phrases in parentheses like (English word). NEVER use parentheses for Spanish text. Spanish titles should be bold like **Título:** without parentheses.';
+
         const prompt = `
 You are a professional English pronunciation coach.
 Analyze the provided audio recording.
@@ -245,6 +265,7 @@ Task:
 4. Give 2-3 specific tips to improve.
 
 ${langInstruction}
+${formattingRule}
 
 Respond ONLY with valid JSON:
 {
@@ -339,6 +360,11 @@ exports.videoCall = onRequest(async (req, res) => {
 
         const scenarioDesc = scenarioDescriptions[scenario] || 'a professional business conversation';
 
+        const formattingRule = 
+          feedbackLang === 'es'
+            ? 'STRICT FORMATTING RULE: In your response, tips, and corrections, always wrap English words/phrases in parentheses like (English word). NEVER use parentheses for Spanish text.'
+            : 'Wrap English examples in parentheses like (example).';
+
         const prompt = `
 You are an AI English tutor conducting ${scenarioDesc}.
 
@@ -347,13 +373,14 @@ ${historyText ? `Previous conversation:\n${historyText}\n` : ''}
 Student said: "${user_message}"
 
 ${langInstruction}
+${formattingRule}
 
 Respond ONLY with valid JSON (no markdown, no backticks):
 
 {
-  "ai_response": "Your natural conversational response in English (2-4 sentences)",
-  "corrections": ["List corrections to the student's English if any, or empty array"],
-  "tips": ["1-2 brief professional tips for this scenario"]
+  "ai_response": "...",
+  "corrections": ["..."],
+  "tips": ["..."]
 }
 `;
 
@@ -488,6 +515,83 @@ exports.updateSubscription = onRequest(async (req, res) => {
 
       return res.json({ success: true, plan, subscription_end: endDate.toISOString() });
     } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  });
+});
+
+// =======================================================
+// GENERATE SPEECH (TTS Professional)
+// =======================================================
+
+exports.generateSpeech = onRequest(async (req, res) => {
+  cors(req, res, async () => {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    try {
+      const { text, voiceId } = req.body;
+      if (!text) return res.status(400).send('Text is required');
+
+      // Mapeo de voces Gemini a Google Cloud TTS (Neural2 y Journey de alta fidelidad)
+      const voiceMap = {
+        'orion': { languageCode: 'en-US', name: 'en-US-Journey-D' },
+        'pegasus': { languageCode: 'en-US', name: 'en-US-Journey-F' },
+        'ursa': { languageCode: 'en-US', name: 'en-US-Neural2-H' },
+        'nova': { languageCode: 'en-US', name: 'en-US-Neural2-F' },
+        'eclipse': { languageCode: 'en-US', name: 'en-US-Neural2-J' }
+      };
+
+      const selectedVoice = voiceMap[voiceId?.toLowerCase()] || voiceMap['orion'];
+
+      // 1. LIMPIEZA DE BASURA DE TEXTO (Regex)
+      const clean_text_for_speech = (text) => {
+        return text.replace(/\*+/g, '');
+      };
+
+      // Limpieza de emergencia inmediata
+      const safeText = clean_text_for_speech(text);
+
+      // 2. CONVERSIÓN A SSML BILINGÜE INTELIGENTE (Regla de Hierro: Paréntesis)
+      const convertToSSML = (rawText) => {
+        // A. Limpiamos comillas del texto original
+        let cleanBase = rawText.replace(/"/g, '');
+        
+        // B. Escapamos caracteres XML
+        let escaped = cleanBase.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        // C. Etiquetamos inglés BASADO EN PARÉNTESIS (Instrucción Punto 3222)
+        // Solo etiquetamos como INGLÉS si está entre ( ) y NO tiene caracteres españoles
+        let detected = escaped.replace(/\(([^)]+)\)/g, (match, content) => {
+          const hasSpanishChars = /[áéíóúñÁÉÍÓÚÑ¿¡]/.test(content);
+          if (hasSpanishChars) return `(${content})`; // Mantener paréntesis si es español (error de LLM)
+          return `<voice name="en-US-Neural2-F">${content}</voice>`;
+        });
+
+        // D. Borramos asteriscos de formato restantes para que no se lean
+        let finalSSML = detected.replace(/\*+/g, '').trim();
+
+        return `<speak><prosody rate="medium" pitch="0st">${finalSSML}</prosody></speak>`;
+      };
+
+      const request = {
+        input: { ssml: convertToSSML(text) },
+        voice: { 
+          languageCode: 'es-US', 
+          name: 'es-US-Neural2-A'
+        },
+        audioConfig: { audioEncoding: 'MP3', pitch: 0, speakingRate: 1.0 },
+      };
+
+      const [response] = await ttsClient.synthesizeSpeech(request);
+      
+      // Enviamos el audio como base64 para que el navegador lo reproduzca fácilmente
+      res.set('Content-Type', 'application/json');
+      return res.json({ 
+        audioContent: response.audioContent.toString('base64') 
+      });
+
+    } catch (error) {
+      console.error('TTS Error:', error);
       return res.status(500).json({ error: error.message });
     }
   });
