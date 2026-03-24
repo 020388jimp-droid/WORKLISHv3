@@ -551,33 +551,61 @@ exports.generateSpeech = onRequest(async (req, res) => {
       // Limpieza de emergencia inmediata
       const safeText = clean_text_for_speech(text);
 
-      // 2. CONVERSIÓN A SSML BILINGÜE INTELIGENTE (Regla de Hierro: Paréntesis)
+      // 2. CONVERSIÓN A SSML BILINGÜE INTELIGENTE (Detecta inglés vs español)
       const convertToSSML = (rawText) => {
-        // A. Limpiamos comillas del texto original
-        let cleanBase = rawText.replace(/"/g, '');
+        let escaped = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\*/g, '');
         
-        // B. Escapamos caracteres XML
-        let escaped = cleanBase.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        
-        // C. Etiquetamos inglés BASADO EN PARÉNTESIS (Instrucción Punto 3222)
-        // Solo etiquetamos como INGLÉS si está entre ( ) y NO tiene caracteres españoles
-        let detected = escaped.replace(/\(([^)]+)\)/g, (match, content) => {
-          const hasSpanishChars = /[áéíóúñÁÉÍÓÚÑ¿¡]/.test(content);
-          if (hasSpanishChars) return `(${content})`; // Mantener paréntesis si es español (error de LLM)
-          return `<voice name="en-US-Neural2-F">${content}</voice>`;
+        const segments = [];
+        // Separamos por () y "" para identificar posibles frases en inglés
+        const segRegex = /["(]([^")]+)[)"]|([^"(]+)/g;
+        let match;
+        while ((match = segRegex.exec(escaped)) !== null) {
+          if (match[1] !== undefined) {
+             const ext = match[1].trim();
+             const hasSpanish = /[áéíóúñÁÉÍÓÚÑ¿¡]/.test(ext);
+             segments.push({ text: ext, lang: hasSpanish ? 'es' : 'en' });
+          } else if (match[2] && match[2].trim()) {
+             segments.push({ text: match[2].trim(), lang: 'es' });
+          }
+        }
+
+        if (segments.length === 0) {
+           segments.push({ text: escaped, lang: 'es' });
+        }
+
+        // Corrección heurística inteligente
+        segments.forEach(s => {
+           // Si asignamos 'es' pero no tiene letras exclusivas en español y tiene palabras comunes en inglés, corregir a 'en'
+           if (s.lang === 'es' && !/[áéíóúñÁÉÍÓÚÑ¿¡]/.test(s.text)) {
+               if (/\b(the|is|are|you|and|in|to|for|with|it|this|that|of|your|my|can|will|do|we)\b/i.test(s.text)) {
+                   s.lang = 'en';
+               }
+           }
+           // Si asignamos 'en' pero tiene palabras exclusivas o letras en español
+           if (s.lang === 'en') {
+               if (/[áéíóúñÁÉÍÓÚÑ¿¡]/.test(s.text) || /\b(el|la|los|las|un|una|de|que|en|por|para|con|como|su|tu|es|son|ya)\b/i.test(s.text)) {
+                   s.lang = 'es';
+               }
+           }
         });
 
-        // D. Borramos asteriscos de formato restantes para que no se lean
-        let finalSSML = detected.replace(/\*+/g, '').trim();
-
-        return `<speak><prosody rate="medium" pitch="0st">${finalSSML}</prosody></speak>`;
+        let ssml = '<speak><prosody rate="medium" pitch="0st">';
+        segments.forEach(s => {
+            if(!s.text) return;
+            // Neural2 transiciona suavemente entre idiomas y no genera errores de SSML
+            const voiceName = s.lang === 'en' ? 'en-US-Neural2-F' : 'es-US-Neural2-A';
+            ssml += `<voice name="${voiceName}">${s.text}</voice> `;
+        });
+        ssml += '</prosody></speak>';
+        return ssml;
       };
 
       const request = {
-        input: { ssml: convertToSSML(text) },
+        input: { ssml: convertToSSML(safeText) },
         voice: { 
-          languageCode: 'es-US', 
-          name: 'es-US-Neural2-A'
+          // Voice fallback superior en caso de que todo el SSML no declare voz (por seguridad)
+          languageCode: 'en-US', 
+          name: 'en-US-Neural2-F'
         },
         audioConfig: { audioEncoding: 'MP3', pitch: 0, speakingRate: 1.0 },
       };
