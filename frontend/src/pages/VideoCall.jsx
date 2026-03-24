@@ -68,6 +68,7 @@ export const VideoCall = () => {
   const currentAudioRef = useRef(null);
   const silenceTimerRef = useRef(null);     // para capturar oraciones completas
   const conversationHistoryRef = useRef([]); // evita closure stale en async callbacks
+  const lastTranscriptRef = useRef('');
 
   // — Init random topic —
   useEffect(() => {
@@ -256,37 +257,43 @@ export const VideoCall = () => {
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
-    let accumulatedTranscript = '';
-
     rec.onstart = () => {
       setIsRecording(true);
       setInterimText('🎤 Escuchando...');
-      accumulatedTranscript = '';
+      lastTranscriptRef.current = '';
     };
 
     rec.onresult = (event) => {
-      let interim = '';
-      let final = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          final += event.results[i][0].transcript + ' ';
+      let tempText = '';
+      
+      // Chrome Android Mobile a veces no reinicia event.results con continuous:true
+      // por lo que cada nueva entrada puede traer TODO el historial repetido.
+      for (let i = 0; i < event.results.length; i++) {
+        let chunk = event.results[i][0].transcript.trim();
+        
+        // Limpiamos espacios y pasamos a minúscula para una comparación justa
+        let cleanTemp = tempText.trim().toLowerCase();
+        let cleanChunk = chunk.toLowerCase();
+
+        if (cleanTemp && cleanChunk.startsWith(cleanTemp)) {
+          // Si el nuevo fragmento YA INCLUYE todo lo que tenemos (Bug Android),
+          // simplemente lo reemplazamos en lugar de sumarlo.
+          tempText = chunk;
         } else {
-          interim += event.results[i][0].transcript;
+          // Comportamiento normal (Desktop Chrome): sumar el nuevo fragmento
+          tempText += (tempText ? ' ' : '') + chunk;
         }
       }
-      if (final) accumulatedTranscript += final;
-      setInterimText((accumulatedTranscript + interim).trim());
+      
+      const fullText = tempText.replace(/\s+/g, ' ').trim();
+      setInterimText(fullText);
+      lastTranscriptRef.current = fullText;
 
       // Reiniciar timer de silencio cada vez que llega audio
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-        const textToSend = accumulatedTranscript.trim() || interim.trim();
-        if (textToSend) {
-          rec.stop(); // onend llamará a processMessage
-        } else {
-          rec.stop();
-        }
-      }, 1500); // 1.5 s de silencio = enviar
+        rec.stop();
+      }, 2500); // 2.5 s de silencio = enviar
     };
 
     rec.onerror = (event) => {
@@ -304,9 +311,10 @@ export const VideoCall = () => {
     rec.onend = () => {
       clearTimeout(silenceTimerRef.current);
       setIsRecording(false);
-      const textToSend = accumulatedTranscript.trim();
+      const textToSend = lastTranscriptRef.current.trim();
       if (textToSend) {
         setInterimText('');
+        lastTranscriptRef.current = '';
         processMessage(textToSend);
       } else {
         setInterimText('');
@@ -484,14 +492,14 @@ export const VideoCall = () => {
                 />
               </div>
 
-              {/* Language toggle */}
               <div className="flex items-center gap-3">
                 <span className="text-slate-500 text-sm font-medium">Idioma de reconocimiento:</span>
                 <button
                   onClick={() => setListeningLang(l => l === 'en-US' ? 'es-MX' : 'en-US')}
                   className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-white text-sm font-bold hover:bg-white/10 transition-all"
                 >
-                  {listeningLang === 'en-US' ? '🇺🇸 Inglés' : '🇲🇽 Español'}
+                  <img src={listeningLang === 'en-US' ? "https://flagcdn.com/w40/us.png" : "https://flagcdn.com/w40/mx.png"} alt={listeningLang} className="w-5 h-auto rounded-sm" />
+                  {listeningLang === 'en-US' ? 'Inglés' : 'Español'}
                 </button>
               </div>
 
@@ -518,11 +526,10 @@ export const VideoCall = () => {
             key="call"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="h-full flex flex-col lg:flex-row p-4 gap-4 overflow-hidden"
+            className="h-full flex flex-col lg:flex-row p-3 md:p-4 gap-3 md:gap-4 overflow-hidden"
           >
             {/* LEFT: Tutor + User video */}
-            {/* pb extra para que los controles no tape el contenido */}
-            <div className="flex-1 relative bg-black rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl group">
+            <div className="relative bg-black rounded-3xl lg:rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl group h-[40vh] min-h-[260px] lg:min-h-[400px] lg:h-auto lg:flex-1 shrink-0">
 
               {/* Tutor avatar */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#1a1a2e] to-black">
@@ -531,7 +538,7 @@ export const VideoCall = () => {
                     scale: isSpeaking ? [1, 1.05, 1] : isRecording ? [1, 1.08, 1] : 1,
                   }}
                   transition={{ repeat: Infinity, duration: isSpeaking ? 0.5 : 2 }}
-                  className={`w-44 h-44 md:w-56 md:h-56 rounded-full flex items-center justify-center border-4 mb-6 transition-all ${isRecording
+                  className={`w-32 h-32 md:w-44 md:h-44 rounded-full flex items-center justify-center border-4 mb-4 md:mb-6 transition-all ${isRecording
                       ? 'bg-red-500/10 border-red-500 shadow-[0_0_80px_rgba(239,68,68,0.4)]'
                       : isSpeaking
                         ? 'bg-cyan-500/10 border-cyan-400 shadow-[0_0_80px_rgba(6,182,212,0.4)]'
@@ -539,7 +546,7 @@ export const VideoCall = () => {
                     }`}
                 >
                   <Bot
-                    size={120}
+                    size={72}
                     className={
                       isRecording ? 'text-red-500' : isSpeaking ? 'text-cyan-400' : 'text-[#7c3aed]'
                     }
@@ -559,7 +566,7 @@ export const VideoCall = () => {
               </div>
 
               {/* User's camera thumbnail */}
-              <div className="absolute top-6 right-6 w-36 h-48 md:w-52 md:h-64 bg-black rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white/10 z-20 group-hover:scale-105 transition-transform duration-500">
+              <div className="absolute top-4 right-4 md:top-6 md:right-6 w-24 h-32 md:w-36 md:h-48 bg-black rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl border-2 md:border-4 border-white/10 z-20 group-hover:scale-105 transition-transform duration-500">
                 {cameraError ? (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-[#1a1a2e] gap-2">
                     <VideoOff size={28} className="text-slate-500" />
@@ -596,10 +603,10 @@ export const VideoCall = () => {
                 {/* Lang toggle — pequeño */}
                 <button
                   onClick={() => setListeningLang(l => l === 'en-US' ? 'es-MX' : 'en-US')}
-                  className="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-base flex items-center justify-center hover:bg-white/15 transition-all"
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 transition-all overflow-hidden p-[2px]"
                   title={listeningLang === 'en-US' ? 'Cambiar a Español' : 'Switch to English'}
                 >
-                  {listeningLang === 'en-US' ? '🇺🇸' : '🇲🇽'}
+                  <img src={listeningLang === 'en-US' ? "https://flagcdn.com/w40/us.png" : "https://flagcdn.com/w40/mx.png"} alt={listeningLang} className="w-full h-full object-cover rounded-full" />
                 </button>
 
                 {/* SEPARADOR */}
@@ -662,7 +669,7 @@ export const VideoCall = () => {
             </div>
 
             {/* RIGHT: Chat panel */}
-            <Card className="w-full lg:w-[460px] bg-[#1a1a2e] border-white/5 flex flex-col min-h-0 rounded-[3rem] overflow-hidden shadow-2xl border border-white/5">
+            <Card className="flex-1 w-full lg:w-[460px] bg-[#1a1a2e] border-white/5 flex flex-col min-h-0 rounded-3xl lg:rounded-[3rem] overflow-hidden shadow-2xl relative border border-white/5">
               {/* Header */}
               <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between shrink-0">
                 <div>
