@@ -441,6 +441,50 @@ export const VideoCall = () => {
   const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   // ─────────────────────────────────────────
+  // Helper: Clickable English Words
+  // ─────────────────────────────────────────
+  const renderMessageText = (text, role) => {
+    if (!text) return null;
+    const parts = text.split(/(\([^)]+\))/g);
+    
+    return parts.map((part, index) => {
+      // Check if this part is an English word enclosed in parentheses
+      if (part.startsWith('(') && part.endsWith(')')) {
+        const cleanWord = part.slice(1, -1).trim(); // Remove parentheses
+        const isSp = /[áéíóúñÁÉÍÓÚÑ¿¡]/.test(cleanWord);
+        
+        return (
+          <button
+            key={index}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              window.speechSynthesis.cancel();
+              const utter = new SpeechSynthesisUtterance(cleanWord);
+              utter.lang = isSp ? 'es-MX' : 'en-US';
+              const voices = window.speechSynthesis.getVoices();
+              utter.voice = voices.find(v => v.lang.startsWith(isSp ? 'es' : 'en') && v.name.includes('Google')) ||
+                            voices.find(v => v.lang.startsWith(isSp ? 'es' : 'en')) || null;
+                            
+              window.speechSynthesis.speak(utter);
+            }}
+            className={`font-black tracking-wide inline-flex items-center gap-1 mx-1 px-2 py-0.5 rounded-md transition-all active:scale-95 cursor-pointer shadow-sm ${
+              role === 'user' 
+                ? 'bg-white/20 hover:bg-white/30 text-white border border-white/20' 
+                : 'bg-[#7c3aed]/20 hover:bg-[#7c3aed]/40 text-[#c4a5ff] border border-[#7c3aed]/50 hover:border-[#7c3aed]/80'
+            }`}
+            title="Escuchar pronunciación"
+          >
+            <Volume2 size={13} strokeWidth={3} className="opacity-80" />
+            {cleanWord}
+          </button>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
+
+  // ─────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────
   return (
@@ -708,7 +752,7 @@ export const VideoCall = () => {
                           ? 'bg-[#7c3aed] text-white'
                           : 'bg-white/5 text-slate-200 border border-white/5'
                         }`}>
-                        {m.text}
+                        {renderMessageText(m.text, m.role)}
                       </div>
                       {/* Show corrections and tips for AI messages */}
                       {m.role === 'assistant' && (m.corrections?.length > 0 || m.tips?.length > 0) && (
@@ -717,7 +761,9 @@ export const VideoCall = () => {
                             <div>
                               <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">✏️ Correcciones</p>
                               {m.corrections.map((c, ci) => (
-                                <p key={ci} className="text-[12px] text-orange-200/80 leading-snug">• {c}</p>
+                                <p key={ci} className="text-[12px] text-orange-200/80 leading-[1.6]">
+                                  • {renderMessageText(c, 'assistant')}
+                                </p>
                               ))}
                             </div>
                           )}
@@ -725,7 +771,9 @@ export const VideoCall = () => {
                             <div>
                               <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-1">💡 Tips</p>
                               {m.tips.map((t, ti) => (
-                                <p key={ti} className="text-[12px] text-cyan-200/80 leading-snug">• {t}</p>
+                                <p key={ti} className="text-[12px] text-cyan-200/80 leading-[1.6]">
+                                  • {renderMessageText(t, 'assistant')}
+                                </p>
                               ))}
                             </div>
                           )}
