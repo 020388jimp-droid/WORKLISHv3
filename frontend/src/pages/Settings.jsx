@@ -27,8 +27,9 @@ export const Settings = () => {
   const navigate = useNavigate();
   const { userProfile, updateProfile, logout, isAuthenticated } = useAuth();
   const progress = getProgress();
-  const { t, level, setLevel, currentLevel } = useLanguage();
+  const { t, level, setLevel, currentLevel, appLang } = useLanguage();
   const [showLevelDialog, setShowLevelDialog] = useState(false);
+  const isEn = appLang === 'en';
 
   if (!isAuthenticated) {
     navigate('/auth');
@@ -121,10 +122,10 @@ export const Settings = () => {
               </div>
               <div>
                 <p className="text-white font-medium">
-                  {t('settings.currentLevel')}: {currentLevel?.name?.es || 'Principiante'}
+                  {t('settings.currentLevel')}: {currentLevel?.name?.[appLang] || 'Principiante'}
                 </p>
                 <p className="text-slate-400 text-sm">
-                  {currentLevel?.description?.es || t('settings.languageDesc')}
+                  {currentLevel?.description?.[appLang] || t('settings.languageDesc')}
                 </p>
               </div>
             </div>
@@ -161,7 +162,7 @@ export const Settings = () => {
                     : 'bg-white/5'
                 }`}
               >
-                <p className="text-sm font-medium text-white mb-1">{lvl.name.es}</p>
+                <p className="text-sm font-medium text-white mb-1">{lvl.name?.[appLang]}</p>
                 <p className="text-xs text-slate-400">
                   App: {lvl.appLanguage === 'es' ? 'ES' : 'EN'}
                   {' / '}
@@ -178,16 +179,16 @@ export const Settings = () => {
           
           <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
             <Volume2 size={22} className="text-[#7c3aed]" />
-            Voz del Tutor IA (Gemini Professional)
+            {isEn ? 'AI Tutor Voice (Gemini Professional)' : 'Voz del Tutor IA (Gemini Professional)'}
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { id: 'orion', name: 'Orion', desc: 'Alegre • Voz más grave', color: 'bg-blue-500/20 text-blue-400' },
-              { id: 'pegasus', name: 'Pegasus', desc: 'Calma • Voz más grave', color: 'bg-emerald-500/20 text-emerald-400' },
-              { id: 'ursa', name: 'Ursa', desc: 'Comprometida • Tono medio', color: 'bg-purple-500/20 text-purple-400' },
-              { id: 'nova', name: 'Nova', desc: 'Sutil • Tono medio', color: 'bg-orange-500/20 text-orange-400' },
-              { id: 'eclipse', name: 'Eclipse', desc: 'Energética • Tono medio', color: 'bg-[#06b6d4]/20 text-[#06b6d4]' }
+              { id: 'orion', name: 'Orion', desc: isEn ? 'Cheerful • Deeper voice' : 'Alegre • Voz más grave', color: 'bg-blue-500/20 text-blue-400' },
+              { id: 'pegasus', name: 'Pegasus', desc: isEn ? 'Calm • Deeper voice' : 'Calma • Voz más grave', color: 'bg-emerald-500/20 text-emerald-400' },
+              { id: 'ursa', name: 'Ursa', desc: isEn ? 'Engaged • Mid pitch' : 'Comprometida • Tono medio', color: 'bg-purple-500/20 text-purple-400' },
+              { id: 'nova', name: 'Nova', desc: isEn ? 'Subtle • Mid pitch' : 'Sutil • Tono medio', color: 'bg-orange-500/20 text-orange-400' },
+              { id: 'eclipse', name: 'Eclipse', desc: isEn ? 'Energetic • Mid pitch' : 'Energética • Tono medio', color: 'bg-[#06b6d4]/20 text-[#06b6d4]' }
             ].map((voice) => (
               <motion.div
                 key={voice.id}
@@ -222,7 +223,7 @@ export const Settings = () => {
           </div>
           
           <p className="mt-6 text-[11px] text-slate-500 font-medium italic border-t border-white/5 pt-4">
-            * Estas voces utilizan la tecnología de Google Cloud Studio para ofrecer una pronunciación bilingüe (Español/Inglés) natural.
+            {isEn ? '* These voices use Google Cloud Studio technology to provide clear, natural bilingual (English/Spanish) pronunciation.' : '* Estas voces utilizan la tecnología de Google Cloud Studio para ofrecer una pronunciación bilingüe (Español/Inglés) natural.'}
           </p>
         </Card>
 
@@ -272,7 +273,10 @@ export const Settings = () => {
                 </div>
               )}
             </div>
-            <Button className="bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-full ml-auto md:ml-0">
+            <Button 
+              onClick={() => { window.location.href = '/#pricing'; }}
+              className="bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-full ml-auto md:ml-0"
+            >
               {t('settings.upgrade')}
             </Button>
           </div>

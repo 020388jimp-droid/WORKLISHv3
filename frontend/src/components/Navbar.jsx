@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, Globe } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const Navbar = ({ transparent = false }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [lang, setLang] = useState('ES');
   const navigate = useNavigate();
   const { isAuthenticated, logout } = useAuth();
+  const { appLang, setOverrideLang, t } = useLanguage();
+  const lang = appLang.toUpperCase();
 
   const handleLogout = async () => {
     await logout();
@@ -16,7 +18,7 @@ export const Navbar = ({ transparent = false }) => {
   };
 
   const toggleLang = () => {
-    setLang(lang === 'ES' ? 'EN' : 'ES');
+    setOverrideLang(appLang === 'es' ? 'en' : 'es');
   };
 
   return (

@@ -296,8 +296,11 @@ export const LanguageProvider = ({ children }) => {
     return saved || 'beginner';
   });
 
+  const [overrideLang, setOverrideLang] = useState(null);
+
   const currentLevel = LANGUAGE_LEVELS[level];
-  const appLang = currentLevel?.appLanguage || 'es';
+  const defaultAppLang = currentLevel?.appLanguage || 'es';
+  const appLang = overrideLang || defaultAppLang;
   const feedbackLang = currentLevel?.feedbackLanguage || 'es';
 
   useEffect(() => {
@@ -319,6 +322,8 @@ export const LanguageProvider = ({ children }) => {
     setLevel,
     currentLevel,
     appLang,
+    overrideLang,
+    setOverrideLang,
     feedbackLang,
     t,
     getFeedbackLanguage,

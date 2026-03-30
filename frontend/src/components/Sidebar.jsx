@@ -12,12 +12,14 @@ import {
 } from 'lucide-react';
 import { getProgress } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Progress } from './ui/progress';
 
 export const Sidebar = ({ isOpen, onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { userProfile, logout } = useAuth();
+  const { t } = useLanguage();
   const progress = getProgress();
 
   const handleLogout = async () => {
@@ -26,11 +28,11 @@ export const Sidebar = ({ isOpen, onClose }) => {
   };
 
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/practice/text', icon: PenTool, label: 'Escritura' },
-    { path: '/practice/voice', icon: Mic, label: 'Pronunciación' },
-    { path: '/practice/video', icon: Video, label: 'Tutor IA' },
-    { path: '/settings', icon: Settings, label: 'Configuración' },
+    { path: '/dashboard', icon: LayoutDashboard, label: t('sidebar.dashboard') },
+    { path: '/practice/text', icon: PenTool, label: t('sidebar.writing') },
+    { path: '/practice/voice', icon: Mic, label: t('sidebar.pronunciation') },
+    { path: '/practice/video', icon: Video, label: t('sidebar.videoCall') },
+    { path: '/settings', icon: Settings, label: t('sidebar.settings') },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -88,7 +90,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               <Flame size={16} className="fill-orange-400" />
               <span className="font-bold">{progress.streak || 0}</span>
             </div>
-            <span className="text-slate-400">días de racha</span>
+            <span className="text-slate-400">{t('dashboard.streakDays')}</span>
           </div>
         </div>
 
@@ -115,7 +117,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         {/* Daily progress */}
         <div className="p-4 mx-4 mb-4 rounded-xl bg-[#1a1a2e] border border-white/5">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-400">Progreso diario</span>
+            <span className="text-sm text-slate-400">{t('dashboard.dailyProgress')}</span>
             <span className="text-sm font-bold text-[#06b6d4]">
               {Math.min(100, (progress.textSessions + progress.voiceSessions + progress.videoSessions) * 20)}%
             </span>
@@ -125,7 +127,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             className="h-2 bg-white/10"
           />
           <p className="text-xs text-slate-500 mt-2">
-            Meta: 5 sesiones diarias
+            {t('dashboard.dailyGoal')}
           </p>
         </div>
 
@@ -137,7 +139,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >
             <LogOut size={20} />
-            <span className="font-medium">Cerrar Sesión</span>
+            <span className="font-medium">{t('sidebar.logout')}</span>
           </button>
         </div>
       </aside>

@@ -18,10 +18,12 @@ import { Progress } from '../components/ui/progress';
 import { Button } from '../components/ui/button';
 import { getProgress } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { userProfile, isAuthenticated } = useAuth();
+  const { t } = useLanguage();
   const progress = getProgress();
   const [greeting, setGreeting] = useState('');
 
@@ -32,16 +34,16 @@ export const Dashboard = () => {
     }
 
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Buenos días');
-    else if (hour < 18) setGreeting('Buenas tardes');
-    else setGreeting('Buenas noches');
-  }, [navigate, isAuthenticated]);
+    if (hour < 12) setGreeting(t('dashboard.greeting.morning'));
+    else if (hour < 18) setGreeting(t('dashboard.greeting.afternoon'));
+    else setGreeting(t('dashboard.greeting.evening'));
+  }, [navigate, isAuthenticated, t]);
 
   const practiceModules = [
     {
       id: 'text',
-      title: 'Práctica de Escritura',
-      description: 'Mejora tus emails y documentos profesionales',
+      title: t('dashboard.writingTitle'),
+      description: t('dashboard.writingDesc'),
       icon: PenTool,
       color: '#7c3aed',
       path: '/practice/text',
@@ -49,8 +51,8 @@ export const Dashboard = () => {
     },
     {
       id: 'voice',
-      title: 'Entrenamiento de Voz',
-      description: 'Perfecciona tu pronunciación',
+      title: t('dashboard.voiceTitle'),
+      description: t('dashboard.voiceDesc'),
       icon: Mic,
       color: '#06b6d4',
       path: '/practice/voice',
@@ -58,8 +60,8 @@ export const Dashboard = () => {
     },
     {
       id: 'video',
-      title: 'Video Llamada IA',
-      description: 'Practica conversaciones en vivo',
+      title: t('dashboard.videoTitle'),
+      description: t('dashboard.videoDesc'),
       icon: Video,
       color: '#10b981',
       path: '/practice/video',
@@ -68,10 +70,10 @@ export const Dashboard = () => {
   ];
 
   const stats = [
-    { label: 'Racha', value: progress.streak || 0, suffix: ' días', icon: Flame, color: '#f59e0b' },
-    { label: 'Sesiones', value: progress.textSessions + progress.voiceSessions + progress.videoSessions, suffix: '', icon: Target, color: '#7c3aed' },
-    { label: 'Minutos', value: progress.totalMinutes || 0, suffix: ' min', icon: Clock, color: '#06b6d4' },
-    { label: 'Promedio', value: progress.averageScore || 0, suffix: '%', icon: TrendingUp, color: '#10b981' }
+    { label: t('dashboard.streak'), value: progress.streak || 0, suffix: ` ${t('dashboard.days')}`, icon: Flame, color: '#f59e0b' },
+    { label: t('dashboard.sessions'), value: progress.textSessions + progress.voiceSessions + progress.videoSessions, suffix: '', icon: Target, color: '#7c3aed' },
+    { label: t('dashboard.minutes'), value: progress.totalMinutes || 0, suffix: ` ${t('dashboard.min')}`, icon: Clock, color: '#06b6d4' },
+    { label: t('dashboard.average'), value: progress.averageScore || 0, suffix: '%', icon: TrendingUp, color: '#10b981' }
   ];
 
   const recentHistory = (progress.history || []).slice(0, 5);
@@ -91,7 +93,7 @@ export const Dashboard = () => {
           {greeting}, {userProfile?.name?.split(' ')[0] || 'Usuario'}
         </h1>
         <p className="text-slate-400">
-          ¿Listo para mejorar tu inglés hoy?
+          {t('dashboard.ready')}
         </p>
       </motion.div>
 
@@ -133,7 +135,7 @@ export const Dashboard = () => {
         className="mb-8"
       >
         <h2 className="text-xl font-semibold text-white mb-4 font-['Outfit']">
-          Módulos de Práctica
+          {t('dashboard.practiceModules')}
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
           {practiceModules.map((module, index) => (
@@ -158,7 +160,7 @@ export const Dashboard = () => {
                   <p className="text-slate-400 text-sm mb-4">{module.description}</p>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-500">
-                      {module.sessions} sesiones completadas
+                      {module.sessions} {t('dashboard.sessionsCompleted')}
                     </span>
                     <ArrowRight size={18} className="text-slate-500 group-hover:text-[#7c3aed] group-hover:translate-x-1 transition-all" />
                   </div>
@@ -182,13 +184,13 @@ export const Dashboard = () => {
             className="bg-[#1a1a2e] border-white/5 p-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white font-['Outfit']">Meta Semanal</h3>
+              <h3 className="text-lg font-semibold text-white font-['Outfit']">{t('dashboard.weeklyGoal')}</h3>
               <Award className="text-[#7c3aed]" size={24} />
             </div>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-400">Sesiones esta semana</span>
+                  <span className="text-slate-400">{t('dashboard.sessionsThisWeek')}</span>
                   <span className="text-white font-medium">
                     {progress.textSessions + progress.voiceSessions + progress.videoSessions}/20
                   </span>
@@ -200,8 +202,8 @@ export const Dashboard = () => {
               </div>
               <p className="text-sm text-slate-400">
                 {progress.textSessions + progress.voiceSessions + progress.videoSessions >= 20 
-                  ? '¡Meta alcanzada! Sigue así.' 
-                  : `Faltan ${20 - (progress.textSessions + progress.voiceSessions + progress.videoSessions)} sesiones para tu meta.`}
+                  ? t('dashboard.goalReached')
+                  : `${t('dashboard.remaining')} ${20 - (progress.textSessions + progress.voiceSessions + progress.videoSessions)} ${t('dashboard.sessionsRemaining')}`}
               </p>
             </div>
           </Card>
@@ -218,7 +220,7 @@ export const Dashboard = () => {
             className="bg-[#1a1a2e] border-white/5 p-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white font-['Outfit']">Actividad Reciente</h3>
+              <h3 className="text-lg font-semibold text-white font-['Outfit']">{t('dashboard.recentActivity')}</h3>
               <Calendar className="text-[#06b6d4]" size={24} />
             </div>
             {recentHistory.length > 0 ? (
@@ -236,8 +238,8 @@ export const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-sm text-white capitalize">
-                          {item.type === 'text' ? 'Escritura' : 
-                           item.type === 'voice' ? 'Voz' : 'Video'}
+                          {item.type === 'text' ? t('dashboard.writingTitle') : 
+                           item.type === 'voice' ? t('dashboard.voiceTitle') : t('dashboard.videoTitle')}
                         </p>
                         <p className="text-xs text-slate-500">
                           {new Date(item.date).toLocaleDateString('es-ES', { 
@@ -260,10 +262,10 @@ export const Dashboard = () => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-slate-400 mb-4">Aún no tienes actividad</p>
+                <p className="text-slate-400 mb-4">{t('dashboard.noActivity')}</p>
                 <Link to="/practice/text">
                   <Button className="bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-full">
-                    Comienza tu primera práctica
+                    {t('dashboard.startFirst')}
                   </Button>
                 </Link>
               </div>
