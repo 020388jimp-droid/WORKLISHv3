@@ -55,3 +55,41 @@ export const updateProgress = (type, score) => {
   localStorage.setItem('worklish_progress', JSON.stringify(progress));
   return progress;
 };
+
+export const getDailyCount = (type) => {
+  const progress = getProgress();
+  const today = new Date().toISOString().split('T')[0];
+  
+  return (progress.history || []).filter(item => {
+    return item.type === type && item.date.startsWith(today);
+  }).length;
+};
+
+export const canPractice = (type, userProfile) => {
+  if (!userProfile) return true; // Default to allow if profile not loaded
+  
+  const status = userProfile?.subscription_status || 'free';
+  if (status === 'enterprise') return true;
+  
+  const progress = getProgress();
+  
+  if (status === 'pro') {
+    // If Pro, limit total minutes (this could be per month, but for simplicity we use totalMinutes here)
+    // Or we filter history for current month
+    const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const monthlyMinutes = (progress.history || [])
+      .filter(item => item.date.startsWith(thisMonth))
+      .reduce((acc, item) => acc + (item.type === 'video' ? 5 : 0), 0); // Assuming 5 min per session for simplicity
+      
+    if (type === 'video' && monthlyMinutes >= 30) return false;
+    return true;
+  }
+  
+  // Free plan limits
+  const dailyCount = getDailyCount(type);
+  if (type === 'text' && dailyCount >= 5) return false;
+  if (type === 'voice' && dailyCount >= 2) return false;
+  if (type === 'video') return false; // Free can't do video
+  
+  return true;
+};

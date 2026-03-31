@@ -285,6 +285,7 @@ export const translations = {
   'common.cancel': { es: 'Cancelar', en: 'Cancel' },
   'common.save': { es: 'Guardar', en: 'Save' },
   'common.confirm': { es: 'Confirmar', en: 'Confirm' },
+  'common.limit_reached': { es: 'Has alcanzado el límite diario para tu plan.', en: 'You have reached the daily limit for your plan.' },
 };
 
 // Context

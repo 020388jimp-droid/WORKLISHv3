@@ -9,7 +9,7 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Progress } from '../components/ui/progress';
-import { updateProgress } from '../lib/utils';
+import { updateProgress, canPractice } from '../lib/utils';
 import { practiceText, generateSpeech } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -73,6 +73,13 @@ export const TextPractice = () => {
   const handleSubmit = async () => {
     if (!text.trim()) return toast.error(t('common.error'));
     if (!isAuthenticated) return toast.error('Debes iniciar sesión.');
+
+    if (!canPractice('text', userProfile)) {
+      toast.error(t('common.limit_reached') || 'Has alcanzado el límite diario para tu plan.');
+      navigate('/pricing');
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     try {

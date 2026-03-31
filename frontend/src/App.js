@@ -10,6 +10,8 @@ import TextPractice from "./pages/TextPractice";
 import VoicePractice from "./pages/VoicePractice";
 import VideoCall from "./pages/VideoCall";
 import Settings from "./pages/Settings";
+import { PricingPage } from "./pages/PricingPage";
+import { FeaturesPage } from "./pages/FeaturesPage";
 
 // Components
 import { DashboardLayout } from "./components/DashboardLayout";
@@ -48,6 +50,8 @@ function AppRoutes() {
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/features" element={<FeaturesPage />} />
         
         {/* Protected routes */}
         <Route 

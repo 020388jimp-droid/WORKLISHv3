@@ -40,30 +40,16 @@ export const Navbar = ({ transparent = false }) => {
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
-          {!isAuthenticated ? (
-            <>
-              <a href="#features" className="text-slate-300 hover:text-white transition-colors">
-                {lang === 'ES' ? 'Caracteristicas' : 'Features'}
-              </a>
-              <a href="#pricing" className="text-slate-300 hover:text-white transition-colors">
-                {lang === 'ES' ? 'Precios' : 'Pricing'}
-              </a>
-            </>
-          ) : (
-            <>
-              <Link to="/dashboard" className="text-slate-300 hover:text-white transition-colors">
-                Dashboard
-              </Link>
-              <Link to="/practice/text" className="text-slate-300 hover:text-white transition-colors">
-                {lang === 'ES' ? 'Escritura' : 'Writing'}
-              </Link>
-              <Link to="/practice/voice" className="text-slate-300 hover:text-white transition-colors">
-                {lang === 'ES' ? 'Voz' : 'Voice'}
-              </Link>
-              <Link to="/practice/video" className="text-slate-300 hover:text-white transition-colors">
-                {lang === 'ES' ? 'Video' : 'Video'}
-              </Link>
-            </>
+          <Link to="/features" className="text-slate-300 hover:text-white transition-colors">
+            {lang === 'ES' ? 'Caracteristicas' : 'Features'}
+          </Link>
+          <Link to="/pricing" className="text-slate-300 hover:text-white transition-colors" id="navbar-pricing-link">
+            {lang === 'ES' ? 'Precios' : 'Pricing'}
+          </Link>
+          {isAuthenticated && (
+            <Link to="/dashboard" className="text-slate-300 hover:text-white transition-colors">
+              Dashboard
+            </Link>
           )}
         </div>
 
@@ -123,16 +109,14 @@ export const Navbar = ({ transparent = false }) => {
           <div className="px-6 py-4 space-y-4">
             {!isAuthenticated ? (
               <>
-                <a href="#features" className="block text-slate-300 hover:text-white py-2">
+                <Link to="/features" onClick={() => setIsOpen(false)} className="block text-slate-300 hover:text-white py-2">
                   {lang === 'ES' ? 'Caracteristicas' : 'Features'}
-                </a>
-                <a href="#pricing" className="block text-slate-300 hover:text-white py-2">
+                </Link>
+                <Link to="/pricing" onClick={() => setIsOpen(false)} className="block text-slate-300 hover:text-white py-2">
                   {lang === 'ES' ? 'Precios' : 'Pricing'}
-                </a>
-                <Link to="/auth" className="block">
-                  <Button variant="ghost" className="w-full justify-start text-slate-300">
-                    {lang === 'ES' ? 'Iniciar Sesion' : 'Login'}
-                  </Button>
+                </Link>
+                <Link to="/auth" className="block text-slate-300 hover:text-white py-2">
+                  {lang === 'ES' ? 'Iniciar Sesion' : 'Login'}
                 </Link>
                 <Link to="/auth?mode=register" className="block">
                   <Button className="w-full bg-[#7c3aed] hover:bg-[#8b5cf6] text-white">
@@ -142,17 +126,11 @@ export const Navbar = ({ transparent = false }) => {
               </>
             ) : (
               <>
-                <Link to="/dashboard" className="block text-slate-300 hover:text-white py-2">
+                <Link to="/pricing" onClick={() => setIsOpen(false)} className="block text-slate-300 hover:text-white py-2">
+                  {lang === 'ES' ? 'Precios' : 'Pricing'}
+                </Link>
+                <Link to="/dashboard" onClick={() => setIsOpen(false)} className="block text-slate-300 hover:text-white py-2">
                   Dashboard
-                </Link>
-                <Link to="/practice/text" className="block text-slate-300 hover:text-white py-2">
-                  {lang === 'ES' ? 'Escritura' : 'Writing'}
-                </Link>
-                <Link to="/practice/voice" className="block text-slate-300 hover:text-white py-2">
-                  {lang === 'ES' ? 'Voz' : 'Voice'}
-                </Link>
-                <Link to="/practice/video" className="block text-slate-300 hover:text-white py-2">
-                  {lang === 'ES' ? 'Video' : 'Video'}
                 </Link>
                 <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-slate-300">
                   {lang === 'ES' ? 'Cerrar Sesion' : 'Logout'}

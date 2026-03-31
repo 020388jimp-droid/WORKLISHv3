@@ -15,6 +15,13 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
+// Lista de correos con acceso Enterprise de por vida (Administradores/Desarrolladores)
+const ADMIN_EMAILS = [
+  'admin@worklish.com',
+  '020388jimp@gmail.com',
+  // Agrega tu correo aquí
+];
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -28,15 +35,26 @@ export const AuthProvider = ({ children }) => {
         // Cargar perfil de Firestore
         try {
           const profileDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          const isAdmin = ADMIN_EMAILS.includes(firebaseUser.email);
+          
           if (profileDoc.exists()) {
-            setUserProfile({ id: firebaseUser.uid, ...profileDoc.data() });
+            let data = profileDoc.data();
+            
+            // Bypass para administradores
+            if (isAdmin && data.subscription_status !== 'enterprise') {
+              data.subscription_status = 'enterprise';
+              data.subscription_end = 'lifetime';
+              await setDoc(doc(db, 'users', firebaseUser.uid), data, { merge: true });
+            }
+            
+            setUserProfile({ id: firebaseUser.uid, ...data });
           } else {
             // Crear perfil si no existe
             const newProfile = {
               email: firebaseUser.email,
               name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario',
-              subscription_status: 'trial',
-              subscription_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              subscription_status: isAdmin ? 'enterprise' : 'trial',
+              subscription_end: isAdmin ? 'lifetime' : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               language_level: 'beginner',
               created_at: new Date().toISOString()
             };
@@ -45,12 +63,14 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (error) {
           console.error('Error loading user profile:', error);
+          const isAdmin = ADMIN_EMAILS.includes(firebaseUser.email);
           // Usar datos básicos del usuario de Firebase Auth
           setUserProfile({
             id: firebaseUser.uid,
             email: firebaseUser.email,
             name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario',
-            subscription_status: 'trial'
+            subscription_status: isAdmin ? 'enterprise' : 'trial',
+            subscription_end: isAdmin ? 'lifetime' : null
           });
         }
       } else {

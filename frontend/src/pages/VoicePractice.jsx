@@ -21,7 +21,7 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Progress } from '../components/ui/progress';
-import { updateProgress } from '../lib/utils';
+import { updateProgress, canPractice } from '../lib/utils';
 import { practiceVoice, generateSpeech } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -124,6 +124,13 @@ export const VoicePractice = () => {
 
   const handleSubmit = async () => {
     if (!audioBlob) return;
+
+    if (!canPractice('voice', userProfile)) {
+      toast.error(t('common.limit_reached') || 'Has alcanzado el límite diario para tu plan.');
+      navigate('/pricing');
+      return;
+    }
+
     setLoading(true);
 
     try {

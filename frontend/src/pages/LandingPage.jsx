@@ -1,118 +1,18 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  PenTool, 
-  Mic, 
-  Video, 
-  Target, 
-  TrendingUp, 
-  Briefcase,
-  Check,
   ArrowRight,
   Zap,
-  Globe,
-  Users
+  Check,
+  Mic
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
 import { Navbar } from '../components/Navbar';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export const LandingPage = () => {
   const { appLang } = useLanguage();
   const isEn = appLang === 'en';
-
-  const features = [
-    {
-      icon: PenTool,
-      title: isEn ? 'Writing Practice' : 'Práctica de Escritura',
-      description: isEn ? 'Improve your emails, reports and presentations with real-time AI corrections.' : 'Mejora tus emails, reportes y presentaciones con correcciones de IA en tiempo real.',
-      color: '#7c3aed'
-    },
-    {
-      icon: Mic,
-      title: isEn ? 'Voice Training' : 'Entrenamiento de Voz',
-      description: isEn ? 'Perfect your pronunciation with instant feedback and personalized tips.' : 'Perfecciona tu pronunciación con retroalimentación instantánea y tips personalizados.',
-      color: '#06b6d4'
-    },
-    {
-      icon: Video,
-      title: isEn ? 'AI Video Call' : 'Video Llamada con IA',
-      description: isEn ? 'Practice work conversations in real-time with an interactive AI tutor.' : 'Practica conversaciones laborales en tiempo real con un tutor de IA interactivo.',
-      color: '#10b981'
-    },
-    {
-      icon: Target,
-      title: isEn ? 'Professional Focus' : 'Enfoque Profesional',
-      description: isEn ? 'Content designed for real work situations: meetings, negotiations and more.' : 'Contenido diseñado para situaciones reales del trabajo: reuniones, negociaciones y más.',
-      color: '#f59e0b'
-    }
-  ];
-
-  const plans = [
-    {
-      name: isEn ? 'Free' : 'Gratis',
-      price: '$0',
-      period: isEn ? 'forever' : 'siempre',
-      features: isEn ? [
-        '5 text corrections/day',
-        '2 voice practices/day',
-        'Basic access to tips',
-        'Saved local progress'
-      ] : [
-        '5 correcciones de texto/día',
-        '2 prácticas de voz/día',
-        'Acceso básico a tips',
-        'Progreso local guardado'
-      ],
-      cta: isEn ? 'Start Free' : 'Comenzar Gratis',
-      popular: false
-    },
-    {
-      name: 'Pro',
-      price: '$9.99',
-      period: isEn ? '/month' : '/mes',
-      features: isEn ? [
-        'Unlimited corrections',
-        'Unlimited voice practices',
-        '30 min video call/month',
-        'Advanced scenarios',
-        'Detailed progress analysis',
-        'Priority support'
-      ] : [
-        'Correcciones ilimitadas',
-        'Prácticas de voz ilimitadas',
-        '30 minutos de video call/mes',
-        'Escenarios avanzados',
-        'Análisis de progreso detallado',
-        'Soporte prioritario'
-      ],
-      cta: isEn ? 'Try 7 days free' : 'Probar 7 días gratis',
-      popular: true
-    },
-    {
-      name: 'Enterprise',
-      price: '$19.99',
-      period: isEn ? '/month' : '/mes',
-      features: isEn ? [
-        'Everything in Pro',
-        'Unlimited video calls',
-        'Custom scenarios',
-        'Team reports',
-        'API access',
-        'Dedicated account manager'
-      ] : [
-        'Todo en Pro',
-        'Video calls ilimitadas',
-        'Escenarios personalizados',
-        'Reportes de equipo',
-        'API access',
-        'Account manager dedicado'
-      ],
-      cta: isEn ? 'Contact Sales' : 'Contactar Ventas',
-      popular: false
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-[#0f0f1a] noise">
@@ -160,14 +60,14 @@ export const LandingPage = () => {
                     <ArrowRight className="ml-2" size={20} />
                   </Button>
                 </Link>
-                <a href="#features">
+                <Link to="/features">
                   <Button 
                     variant="outline"
                     className="border-white/20 text-white hover:bg-white/5 text-lg px-8 py-6 rounded-full"
                   >
                     {isEn ? 'View Features' : 'Ver Características'}
                   </Button>
-                </a>
+                </Link>
               </div>
 
               {/* Stats */}
@@ -194,7 +94,6 @@ export const LandingPage = () => {
               className="relative hidden lg:block"
             >
               <div className="relative aspect-square max-w-lg mx-auto">
-                {/* AI Core visual */}
                 <div className="absolute inset-0 rounded-3xl overflow-hidden">
                   <img 
                     src="https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&q=80"
@@ -204,7 +103,6 @@ export const LandingPage = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f1a] via-transparent to-transparent" />
                 </div>
                 
-                {/* Floating cards */}
                 <motion.div 
                   className="absolute top-10 -left-8 glass rounded-2xl p-4 shadow-xl"
                   animate={{ y: [0, -10, 0] }}
@@ -252,151 +150,6 @@ export const LandingPage = () => {
           <p className="text-lg text-slate-400">
             {isEn ? 'Train with real scenarios: interviews, presentations, negotiations and more.' : 'Entrena con escenarios reales: entrevistas, presentaciones, negociaciones y más.'}
           </p>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold font-['Outfit'] text-white mb-4">
-              {isEn ? 'Why Worklish?' : '¿Por qué Worklish?'}
-            </h2>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              {isEn ? 'Tools specifically designed for professionals who want to excel in English.' : 'Herramientas diseñadas específicamente para profesionales que quieren destacar en inglés.'}
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <Card 
-                  data-testid={`feature-card-${index}`}
-                  className="bg-[#1a1a2e] border-white/5 p-8 h-full hover:border-[#7c3aed]/30 transition-all group"
-                >
-                  <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110"
-                    style={{ backgroundColor: `${feature.color}20` }}
-                  >
-                    <feature.icon size={28} style={{ color: feature.color }} />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
-                  <p className="text-slate-400">{feature.description}</p>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-24 px-6 bg-[#1a1a2e]/50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold font-['Outfit'] text-white mb-4">
-              {isEn ? 'How It Works' : 'Cómo Funciona'}
-            </h2>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { step: '01', title: isEn ? 'Choose your practice' : 'Elige tu práctica', desc: isEn ? 'Text, voice or video call based on your goal.' : 'Texto, voz o video call según tu objetivo del día.', icon: Target },
-              { step: '02', title: isEn ? 'Practice with AI' : 'Practica con IA', desc: isEn ? 'Get corrections and tips in real-time.' : 'Recibe correcciones y tips en tiempo real.', icon: Zap },
-              { step: '03', title: isEn ? 'Track your progress' : 'Mide tu progreso', desc: isEn ? 'Visualize your improvement with detailed metrics.' : 'Visualiza tu mejora con métricas detalladas.', icon: TrendingUp }
-            ].map((item, index) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="relative"
-              >
-                <div className="glass rounded-3xl p-8 text-center">
-                  <span className="text-6xl font-bold text-[#7c3aed]/20 font-['Outfit']">{item.step}</span>
-                  <div className="w-16 h-16 rounded-2xl bg-[#7c3aed]/20 flex items-center justify-center mx-auto -mt-4 mb-4">
-                    <item.icon size={32} className="text-[#7c3aed]" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-2">{item.title}</h3>
-                  <p className="text-slate-400">{item.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold font-['Outfit'] text-white mb-4">
-              {isEn ? 'Plans & Pricing' : 'Planes y Precios'}
-            </h2>
-            <p className="text-lg text-slate-400">
-              {isEn ? 'Start free, scale when ready.' : 'Comienza gratis, escala cuando estés listo.'}
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map((plan, index) => (
-              <motion.div
-                key={plan.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                viewport={{ once: true }}
-              >
-                <Card 
-                  data-testid={`pricing-card-${plan.name.toLowerCase()}`}
-                  className={`relative p-8 h-full ${
-                    plan.popular 
-                      ? 'bg-gradient-to-b from-[#7c3aed]/20 to-[#1a1a2e] border-[#7c3aed]/50 glow-primary' 
-                      : 'bg-[#1a1a2e] border-white/5'
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-[#7c3aed] rounded-full text-sm font-medium text-white">
-                      {isEn ? 'Most Popular' : 'Más Popular'}
-                    </div>
-                  )}
-                  
-                  <h3 className="text-xl font-semibold text-white mb-2">{plan.name}</h3>
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-4xl font-bold text-white">{plan.price}</span>
-                    <span className="text-slate-400">{plan.period}</span>
-                  </div>
-                  
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-3 text-slate-300">
-                        <Check size={18} className="text-[#10b981] flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  
-                  <Link to="/auth?mode=register">
-                    <Button 
-                      className={`w-full ${
-                        plan.popular 
-                          ? 'bg-[#7c3aed] hover:bg-[#8b5cf6] text-white' 
-                          : 'bg-white/10 hover:bg-white/20 text-white'
-                      } rounded-full py-6`}
-                    >
-                      {plan.cta}
-                    </Button>
-                  </Link>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 

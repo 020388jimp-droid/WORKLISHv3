@@ -21,6 +21,7 @@ import { Card } from '../components/ui/card.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { useAuth } from '../contexts/AuthContext';
 import { videoCall as videoCallAPI, generateSpeech } from '../lib/firebase';
+import { updateProgress, canPractice } from '../lib/utils';
 import { Toaster, toast } from 'sonner';
 
 const WORK_TOPICS = [
@@ -41,6 +42,7 @@ const WORK_TOPICS = [
 export const VideoCall = () => {
   const navigate = useNavigate();
   const { userProfile, isAuthenticated, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
 
   // — UI State —
   const [isInCall, setIsInCall] = useState(false);
@@ -369,6 +371,13 @@ export const VideoCall = () => {
       toast.error('Por favor escribe o selecciona un tema primero.');
       return;
     }
+
+    if (!canPractice('video', userProfile)) {
+      toast.error(t('common.limit_reached') || 'Has alcanzado el límite de Video Tutor para tu plan.');
+      navigate('/pricing');
+      return;
+    }
+
     setLoading(true);
     setCameraError(null);
 
@@ -423,6 +432,9 @@ export const VideoCall = () => {
     if (stream) stream.getTracks().forEach(t => t.stop());
     // Stop timer
     clearInterval(timerRef.current);
+
+    // Log session in history
+    updateProgress('video', 100);
 
     setIsInCall(false);
     setStream(null);

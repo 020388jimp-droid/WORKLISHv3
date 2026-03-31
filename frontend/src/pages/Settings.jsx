@@ -273,12 +273,13 @@ export const Settings = () => {
                 </div>
               )}
             </div>
-            <Button 
-              onClick={() => { window.location.href = '/#pricing'; }}
-              className="bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-full ml-auto md:ml-0"
+            <Link 
+              to="/pricing"
+              className="inline-flex items-center justify-center px-6 h-10 bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-full ml-auto md:ml-0 font-medium transition-colors"
             >
+              <Crown size={16} className="mr-2" />
               {t('settings.upgrade')}
-            </Button>
+            </Link>
           </div>
         </Card>
 
