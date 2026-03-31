@@ -20,6 +20,7 @@ import {
 import { Card } from '../components/ui/card.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { videoCall as videoCallAPI, generateSpeech } from '../lib/firebase';
 import { updateProgress, canPractice } from '../lib/utils';
 import { Toaster, toast } from 'sonner';

@@ -1,18 +1,113 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowRight,
   Zap,
   Check,
-  Mic
+  Mic,
+  X,
+  Mail,
+  Shield,
+  FileText
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Navbar } from '../components/Navbar';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 export const LandingPage = () => {
   const { appLang } = useLanguage();
   const isEn = appLang === 'en';
+  const [modalOpen, setModalOpen] = useState(null); // 'privacy', 'terms', 'contact'
+
+  const modalContent = {
+    privacy: {
+      title: isEn ? 'Privacy Policy' : 'Política de Privacidad',
+      icon: <Shield className="text-[#06b6d4]" />,
+      content: isEn ? (
+        <div className="space-y-4 text-slate-300">
+          <p>Your privacy is important to us. Worklish is committed to protecting your personal data.</p>
+          <ul className="list-disc pl-5 space-y-2">
+            <li><strong>Data Collection:</strong> We collect your email and practice history to personalize your learning experience.</li>
+            <li><strong>Data Usage:</strong> We use AI to analyze your text and voice. Your audio recordings are processed securely and not stored unless you opt-in for history.</li>
+            <li><strong>Security:</strong> We implement industry-standard encryption to keep your data safe.</li>
+            <li><strong>Third Parties:</strong> We never sell your data to advertisers.</li>
+          </ul>
+        </div>
+      ) : (
+        <div className="space-y-4 text-slate-300">
+          <p>Tu privacidad es importante para nosotros. Worklish se compromete a proteger tus datos personales.</p>
+          <ul className="list-disc pl-5 space-y-2">
+            <li><strong>Recolección de datos:</strong> Recolectamos tu email e historial de práctica para personalizar tu aprendizaje.</li>
+            <li><strong>Uso de datos:</strong> Usamos IA para analizar tu texto y voz. Los audios se procesan de forma segura.</li>
+            <li><strong>Seguridad:</strong> Implementamos encriptación estándar de la industria para mantener tus datos a salvo.</li>
+            <li><strong>Terceros:</strong> Nunca vendemos tus datos a anunciantes.</li>
+          </ul>
+        </div>
+      )
+    },
+    terms: {
+      title: isEn ? 'Terms of Service' : 'Términos de Servicio',
+      icon: <FileText className="text-[#7c3aed]" />,
+      content: isEn ? (
+        <div className="space-y-4 text-slate-300">
+          <p>By using Worklish, you agree to these terms:</p>
+          <ul className="list-disc pl-5 space-y-2">
+            <li><strong>Usage Limits:</strong> Free accounts have daily limits. Pro and Enterprise accounts have expanded quotas.</li>
+            <li><strong>Professional Conduct:</strong> Worklish is a professional tool. Respectful communication with our AI is expected.</li>
+            <li><strong>Account Security:</strong> You are responsible for maintaining the confidentiality of your account credentials.</li>
+            <li><strong>Termination:</strong> We reserve the right to suspend accounts that violate our usage policies.</li>
+          </ul>
+        </div>
+      ) : (
+        <div className="space-y-4 text-slate-300">
+          <p>Al usar Worklish, aceptas estos términos:</p>
+          <ul className="list-disc pl-5 space-y-2">
+            <li><strong>Límites de Uso:</strong> Las cuentas gratuitas tienen límites diarios. Las cuentas Pro y Enterprise tienen cuotas ampliadas.</li>
+            <li><strong>Conducta Profesional:</strong> Worklish es una herramienta profesional. Se espera una comunicación respetuosa.</li>
+            <li><strong>Seguridad:</strong> Eres responsable de mantener la confidencialidad de tus credenciales.</li>
+            <li><strong>Terminación:</strong> Nos reservamos el derecho de suspender cuentas que violen nuestras políticas.</li>
+          </ul>
+        </div>
+      )
+    },
+    contact: {
+      title: isEn ? 'Contact Support' : 'Contacto y Soporte',
+      icon: <Mail className="text-[#f59e0b]" />,
+      content: isEn ? (
+        <div className="space-y-4 text-slate-300">
+          <p>Need help or have questions? Our team is here for you.</p>
+          <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-2">
+            <p className="flex items-center gap-2">
+              <Mail size={16} className="text-[#06b6d4]" />
+              <strong>Email:</strong> support@worklish.com
+            </p>
+            <p className="flex items-center gap-2">
+              <Zap size={16} className="text-[#06b6d4]" />
+              <strong>Response Time:</strong> Under 24 hours
+            </p>
+          </div>
+          <p>You can also follow us on LinkedIn for updates and tips.</p>
+        </div>
+      ) : (
+        <div className="space-y-4 text-slate-300">
+          <p>¿Necesitas ayuda o tienes preguntas? Nuestro equipo está para apoyarte.</p>
+          <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-2">
+            <p className="flex items-center gap-2">
+              <Mail size={16} className="text-[#06b6d4]" />
+              <strong>Email:</strong> support@worklish.com
+            </p>
+            <p className="flex items-center gap-2">
+              <Zap size={16} className="text-[#06b6d4]" />
+              <strong>Tiempo de respuesta:</strong> Menos de 24 horas
+            </p>
+          </div>
+          <p>También puedes seguirnos en LinkedIn para actualizaciones y consejos.</p>
+        </div>
+      )
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0f0f1a] noise">
@@ -185,12 +280,55 @@ export const LandingPage = () => {
             © 2024 Worklish. {isEn ? 'All rights reserved.' : 'Todos los derechos reservados.'}
           </p>
           <div className="flex gap-6 text-slate-400 text-sm">
-            <a href="#" className="hover:text-white transition-colors">{isEn ? 'Privacy' : 'Privacidad'}</a>
-            <a href="#" className="hover:text-white transition-colors">{isEn ? 'Terms' : 'Términos'}</a>
-            <a href="#" className="hover:text-white transition-colors">{isEn ? 'Contact' : 'Contacto'}</a>
+            <button onClick={() => setModalOpen('privacy')} className="hover:text-white transition-colors">{isEn ? 'Privacy' : 'Privacidad'}</button>
+            <button onClick={() => setModalOpen('terms')} className="hover:text-white transition-colors">{isEn ? 'Terms' : 'Términos'}</button>
+            <button onClick={() => setModalOpen('contact')} className="hover:text-white transition-colors">{isEn ? 'Contact' : 'Contacto'}</button>
           </div>
         </div>
       </footer>
+
+      {/* General Purpose Modal */}
+      <Dialog open={!!modalOpen} onOpenChange={() => setModalOpen(null)}>
+        <DialogContent className="sm:max-w-[550px] bg-[#0f0f1a] border-[#7c3aed]/20 rounded-3xl p-8 overflow-hidden">
+          <div className="absolute top-0 right-0 p-6">
+            <button onClick={() => setModalOpen(null)} className="text-slate-500 hover:text-white transition-colors">
+              <X size={24} />
+            </button>
+          </div>
+
+          <DialogHeader className="mb-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/5 rounded-2xl border border-white/10">
+                {modalOpen && modalContent[modalOpen].icon}
+              </div>
+              <DialogTitle className="text-2xl font-bold font-['Outfit'] text-white">
+                {modalOpen && modalContent[modalOpen].title}
+              </DialogTitle>
+            </div>
+          </DialogHeader>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={modalOpen}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="max-h-[60vh] overflow-y-auto pr-4 custom-scrollbar"
+            >
+              {modalOpen && modalContent[modalOpen].content}
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="mt-8 pt-6 border-t border-white/5">
+            <Button 
+              onClick={() => setModalOpen(null)}
+              className="w-full bg-[#7c3aed] hover:bg-[#8b5cf6] text-white rounded-xl h-12 font-medium"
+            >
+              {isEn ? 'Close' : 'Cerrar'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
