@@ -221,4 +221,12 @@ code, pre {
     .text-gradient {
         @apply bg-clip-text text-transparent bg-gradient-to-r from-[#7c3aed] to-[#06b6d4];
     }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 }
