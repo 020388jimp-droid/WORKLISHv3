@@ -15,15 +15,17 @@ import {
   VolumeX,
   RefreshCw,
   GraduationCap,
-  AlertCircle
+  AlertCircle,
+  Crown
 } from 'lucide-react';
 import { Card } from '../components/ui/card.jsx';
 import { Button } from '../components/ui/button.jsx';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { videoCall as videoCallAPI, generateSpeech } from '../lib/firebase';
-import { updateProgress, canPractice } from '../lib/utils';
 import { Toaster, toast } from 'sonner';
+import { videoCall as videoCallAPI, generateSpeech } from '../lib/firebase';
+import { updateProgress, canPractice, getTrialDaysLeft } from '../lib/utils';
+import { safeSpeech } from '../lib/speech';
 
 const WORK_TOPICS = [
   "Job Interview for Software Engineer",
@@ -42,11 +44,28 @@ const WORK_TOPICS = [
 
 export const VideoCall = () => {
   const navigate = useNavigate();
-  const { userProfile, isAuthenticated, loading: authLoading } = useAuth();
+  const { userProfile, isAuthenticated, loading: authLoading, updateProfile } = useAuth();
   const { t } = useLanguage();
 
   // — UI State —
   const [isInCall, setIsInCall] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const currentLevel = userProfile?.language_level || 'beginner';
+  const feedbackLang = currentLevel === 'beginner' ? 'es' : 'en';
+
+  // Redirigir si no es premium
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      const status = userProfile?.subscription_status || 'free';
+      // Ahora permitimos trial, pro y enterprise
+      if (status !== 'pro' && status !== 'enterprise' && status !== 'trial') {
+        toast.error(feedbackLang === 'es' ? 'La VideoLlamada es una función Pro' : 'Video Call is a Pro feature');
+        navigate('/pricing');
+      }
+    }
+  }, [userProfile, authLoading, isAuthenticated, navigate, feedbackLang]);
+
   const [isRecording, setIsRecording] = useState(false);
   const [tutorMuted, setTutorMuted] = useState(false);
   const [cameraOn, setCameraOn] = useState(true);
@@ -78,8 +97,15 @@ export const VideoCall = () => {
     setCustomTopic(WORK_TOPICS[Math.floor(Math.random() * WORK_TOPICS.length)]);
   }, []);
 
-  const currentLevel = userProfile?.language_level || 'beginner';
-  const feedbackLang = currentLevel === 'beginner' ? 'es' : 'en';
+  useEffect(() => {
+    const daysLeft = getTrialDaysLeft(userProfile);
+    if (daysLeft !== null && !isInCall) {
+      toast.info(`Te quedan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'} de tu prueba gratuita. ¡Aprovéchalos!`, {
+        icon: '🎁',
+        duration: 5000
+      });
+    }
+  }, [userProfile, isInCall]);
 
   // ─────────────────────────────────────────
   // TTS: browser fallback BILINGÜE
@@ -87,9 +113,9 @@ export const VideoCall = () => {
   // ─────────────────────────────────────────
   const speakLocal = useCallback((text) => {
     if (tutorMuted) return;
-    window.speechSynthesis.cancel();
+    safeSpeech.cancel();
 
-    const voices = window.speechSynthesis.getVoices();
+    const voices = safeSpeech.getVoices();
     const rate = currentLevel === 'beginner' ? 0.88 : 1.0;
 
     // Obtener la mejor voz disponible para un idioma dado
@@ -135,7 +161,7 @@ export const VideoCall = () => {
       utterance.rate = rate;
       utterance.onend = speakNext;
       utterance.onerror = () => { setIsSpeaking(false); };
-      window.speechSynthesis.speak(utterance);
+      safeSpeech.speak(utterance);
     };
 
     speakNext();
@@ -179,7 +205,8 @@ export const VideoCall = () => {
         userText,
         newHistory,
         customTopic,
-        feedbackLang
+        feedbackLang,
+        currentLevel
       );
 
       const aiText = data.ai_response || data.response || data.message || data.text || 'Lo siento, no pude procesar eso. ¿Puedes repetirlo?';
@@ -247,7 +274,7 @@ export const VideoCall = () => {
     }
 
     // Detener TTS antes de escuchar
-    window.speechSynthesis.cancel();
+    safeSpeech.cancel();
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -406,9 +433,10 @@ export const VideoCall = () => {
     setConversationHistory([]);
     conversationHistoryRef.current = [];
 
-    const intro = currentLevel === 'beginner'
-      ? `¡Hola! Soy tu Tutor IA de inglés profesional. Hoy practicaremos: "${customTopic}". Pulsa el micrófono para hablar, o escribe en el chat. ¡Empecemos!`
-      : `Hello! I'm your AI English Tutor. Today we'll practice: "${customTopic}". Press the mic to speak or type in the chat. Let's get started!`;
+    const isBeginner = currentLevel === 'beginner';
+    const intro = isBeginner
+      ? `¡Hola! Soy tu Tutor IA de inglés. Hoy practicaremos: "${customTopic}". Usa el botón de la bandera para indicarme si me vas a hablar en inglés o español. Pulsa el micrófono para hablar o usa el chat. ¡Empecemos!`
+      : `Hello! I'm your AI English Tutor. Today we'll practice: "${customTopic}". Remember to use the flag button to switch between English and Spanish recognition. Press the mic to speak or type in the chat. Let's get started!`;
 
     const introHistory = [{ role: 'assistant', content: intro }];
     conversationHistoryRef.current = introHistory;
@@ -420,11 +448,24 @@ export const VideoCall = () => {
     setLoading(false);
   };
 
+  // ─────────────────────────────────────────
+  // 5 MINUTE LIMIT FOR TRIAL & PRO
+  // ─────────────────────────────────────────
+  useEffect(() => {
+    const status = userProfile?.subscription_status || 'free';
+    if ((status === 'trial' || status === 'pro') && callTime >= 300 && isInCall) {
+      toast.info(feedbackLang === 'es' 
+        ? 'Tu sesión diaria de 5 minutos ha terminado. ¡Buen trabajo!' 
+        : 'Your 5-minute daily session has ended. Good job!');
+      handleEndCall();
+    }
+  }, [callTime, userProfile, isInCall, handleEndCall, feedbackLang]);
+
   const handleEndCall = useCallback(() => {
     // Stop recognition
     recognitionRef.current?.stop();
     // Stop TTS
-    window.speechSynthesis.cancel();
+    safeSpeech.cancel();
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -435,7 +476,7 @@ export const VideoCall = () => {
     clearInterval(timerRef.current);
 
     // Log session in history
-    updateProgress('video', 100);
+    updateProgress('video', 100, userProfile, updateProfile);
 
     setIsInCall(false);
     setStream(null);
@@ -472,14 +513,14 @@ export const VideoCall = () => {
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              window.speechSynthesis.cancel();
+              safeSpeech.cancel();
               const utter = new SpeechSynthesisUtterance(cleanWord);
               utter.lang = isSp ? 'es-MX' : 'en-US';
-              const voices = window.speechSynthesis.getVoices();
+              const voices = safeSpeech.getVoices();
               utter.voice = voices.find(v => v.lang.startsWith(isSp ? 'es' : 'en') && v.name.includes('Google')) ||
                             voices.find(v => v.lang.startsWith(isSp ? 'es' : 'en')) || null;
                             
-              window.speechSynthesis.speak(utter);
+              safeSpeech.speak(utter);
             }}
             className={`font-black tracking-wide inline-flex items-center gap-1 mx-1 px-2 py-0.5 rounded-md transition-all active:scale-95 cursor-pointer shadow-sm ${
               role === 'user' 
@@ -507,6 +548,25 @@ export const VideoCall = () => {
 
         {/* ── PRE-CALL SCREEN ── */}
         {!isInCall ? (
+          (!canPractice('video', userProfile)) ? (
+            <motion.div
+              key="paywall"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="h-full flex flex-col items-center justify-center p-6 bg-[#0b0b14] text-center"
+            >
+              <div className="w-24 h-24 bg-gradient-to-br from-[#7c3aed] to-[#06f] rounded-full flex items-center justify-center shadow-2xl shadow-[#7c3aed]/20 mb-8 mx-auto">
+                <Crown size={48} className="text-white" />
+              </div>
+              <h1 className="text-3xl font-black text-white mb-4">Solo en Plan Pro</h1>
+              <p className="text-slate-400 max-w-md mx-auto mb-8 text-lg">
+                La Videollamada con el Tutor de IA es una característica Premium reservada para suscriptores Pro.
+              </p>
+              <Button onClick={() => navigate('/pricing')} className="bg-gradient-to-r from-[#7c3aed] to-[#06f] text-white h-14 px-8 rounded-xl font-bold text-lg shadow-xl shadow-[#7c3aed]/30 hover:scale-[1.02] transition-transform">
+                Ver Planes
+              </Button>
+            </motion.div>
+          ) : (
           <motion.div
             key="pre"
             initial={{ opacity: 0, y: 20 }}
@@ -552,6 +612,7 @@ export const VideoCall = () => {
               <div className="flex items-center gap-3">
                 <span className="text-slate-500 text-sm font-medium">Idioma de reconocimiento:</span>
                 <button
+                  id="language-flag-toggle"
                   onClick={() => setListeningLang(l => l === 'en-US' ? 'es-MX' : 'en-US')}
                   className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-xl border border-white/10 text-white text-sm font-bold hover:bg-white/10 transition-all"
                 >
@@ -575,7 +636,7 @@ export const VideoCall = () => {
               </p>
             </Card>
           </motion.div>
-
+          )
         ) : (
 
           /* ── IN-CALL SCREEN ── */

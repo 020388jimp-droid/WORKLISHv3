@@ -10,15 +10,32 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail,
+  deleteUser,
+  sendEmailVerification
 } from 'firebase/auth';
+
+export { sendEmailVerification };
 
 import { 
   getFirestore, 
   doc, 
   getDoc, 
-  setDoc 
+  setDoc,
+  increment 
 } from 'firebase/firestore';
+
+// Helper: incrementar contador global de usuarios
+const incrementUserCount = async (dbRef) => {
+  try {
+    await setDoc(doc(dbRef, 'stats', 'global'), {
+      total_users: increment(1)
+    }, { merge: true });
+  } catch (e) {
+    console.error('Stats increment error:', e);
+  }
+};
 
 // ===============================
 // CONFIG FIREBASE
@@ -70,16 +87,23 @@ export const registerWithEmail = async (email, password, name) => {
   const user = userCredential.user;
 
   await updateProfile(user, { displayName: name });
+  await sendEmailVerification(user);
+
+  const usedTrialDoc = await getDoc(doc(db, "used_trials", email));
+  const hasUsedTrial = usedTrialDoc.exists();
 
   await setDoc(doc(db, "users", user.uid), {
     email: user.email,
     name: name,
-    subscription_status: "trial",
-    subscription_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    subscription_status: "free",
+    subscription_end: null,
     language_level: "beginner",
     preferred_voice: "orion",
     created_at: new Date().toISOString()
   });
+
+  // Incrementar contador global
+  await incrementUserCount(db);
 
   return user;
 };
@@ -94,22 +118,31 @@ export const loginWithGoogle = async () => {
 
   if (!userDoc.exists()) {
 
+    const usedTrialDoc = await getDoc(doc(db, "used_trials", user.email));
+    const hasUsedTrial = usedTrialDoc.exists();
+
     await setDoc(userDocRef, {
       email: user.email,
       name: user.displayName || user.email?.split("@")[0],
-      subscription_status: "trial",
-      subscription_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription_status: "free",
+      subscription_end: null,
       language_level: "beginner",
       preferred_voice: "orion",
       created_at: new Date().toISOString()
     });
 
+    // Incrementar contador global (solo usuarios nuevos)
+    await incrementUserCount(db);
   }
 
   return user;
 };
 
 export const logout = () => signOut(auth);
+
+export const resetPassword = async (email) => {
+  await sendPasswordResetEmail(auth, email);
+};
 
 export const getCurrentUser = () => {
 
@@ -142,6 +175,12 @@ const getAuthToken = async () => {
 
   return user.getIdToken();
 
+};
+
+export const deleteUserAccount = async () => {
+  const user = auth.currentUser;
+  if (!user) return;
+  return deleteUser(user);
 };
 
 export const apiRequest = async (endpoint, options = {}) => {
@@ -223,15 +262,15 @@ export const practiceVoice = async (audioBlob, expectedText, context, feedbackLa
 
 };
 
-export const videoCall = async (userMessage, conversationHistory, scenario, feedbackLanguage) => {
-
+export const videoCall = async (userMessage, conversationHistory, scenario, feedbackLanguage, level) => {
   return apiRequest("videoCall", {
     method: "POST",
     body: JSON.stringify({
       user_message: userMessage,
       conversation_history: conversationHistory,
       scenario,
-      feedback_language: feedbackLanguage
+      feedback_language: feedbackLanguage,
+      level
     })
   });
 
@@ -273,6 +312,17 @@ export const generateSpeech = async (text, voiceId) => {
   return apiRequest("generateSpeech", {
     method: "POST",
     body: JSON.stringify({ text, voiceId })
+  });
+};
+
+export const howToSay = async (text, context, feedbackLanguage) => {
+  return apiRequest("howToSay", {
+    method: "POST",
+    body: JSON.stringify({
+      text,
+      context,
+      feedback_language: feedbackLanguage
+    })
   });
 };
 

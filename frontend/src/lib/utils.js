@@ -5,10 +5,13 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-// Progress helpers (stored locally)
-export const getProgress = () => {
-  const progress = localStorage.getItem('worklish_progress');
-  return progress ? JSON.parse(progress) : {
+// Progress helpers (Now syncing with Firebase userProfile)
+export const getProgress = (userProfile = null) => {
+  if (userProfile && userProfile.progress) {
+    return userProfile.progress;
+  }
+  
+  return {
     textSessions: 0,
     voiceSessions: 0,
     videoSessions: 0,
@@ -20,44 +23,60 @@ export const getProgress = () => {
   };
 };
 
-export const updateProgress = (type, score) => {
-  const progress = getProgress();
+export const updateProgress = (type, score, userProfile, updateProfileFn) => {
+  const progress = getProgress(userProfile);
   const now = new Date().toISOString();
   
-  progress[`${type}Sessions`] = (progress[`${type}Sessions`] || 0) + 1;
-  progress.totalMinutes = (progress.totalMinutes || 0) + 5;
+  // Clone progress to avoid mutating state directly
+  const p = { ...progress };
   
-  const totalSessions = progress.textSessions + progress.voiceSessions + progress.videoSessions;
-  progress.averageScore = Math.round(
-    ((progress.averageScore * (totalSessions - 1)) + score) / totalSessions
-  );
+  p[`${type}Sessions`] = (p[`${type}Sessions`] || 0) + 1;
+  p.totalMinutes = (p.totalMinutes || 0) + 5;
   
-  const lastPractice = progress.lastPractice ? new Date(progress.lastPractice) : null;
-  const today = new Date();
-  if (lastPractice) {
-    const diffDays = Math.floor((today - lastPractice) / (1000 * 60 * 60 * 24));
-    if (diffDays === 1) {
-      progress.streak = (progress.streak || 0) + 1;
-    } else if (diffDays > 1) {
-      progress.streak = 1;
+  const totalSessions = (p.textSessions || 0) + (p.voiceSessions || 0) + (p.videoSessions || 0) + (p.howToSaySessions || 0);
+  p.averageScore = Math.round(
+    ((p.averageScore * (totalSessions - 1)) + score) / totalSessions
+  ) || score;
+  
+  const todayStr = new Date(now).toDateString();
+  
+  if (p.lastPractice) {
+    const lastDate = new Date(p.lastPractice).toDateString();
+    
+    if (lastDate !== todayStr) {
+       // A new day! Calculate calendar difference
+       const last = new Date(lastDate);
+       const today = new Date(todayStr);
+       const diffDays = Math.round((today - last) / (1000 * 60 * 60 * 24));
+       
+       if (diffDays === 1) {
+         p.streak = (p.streak || 0) + 1;
+       } else if (diffDays > 1) {
+         p.streak = 1; // Streak broken
+       }
     }
+    // If lastDate === todayStr, streak remains the same (already practiced today)
   } else {
-    progress.streak = 1;
+    p.streak = 1;
   }
   
-  progress.lastPractice = now;
+  p.lastPractice = now;
   
-  progress.history = [
+  p.history = [
     { type, score, date: now },
-    ...(progress.history || []).slice(0, 49)
+    ...(p.history || []).slice(0, 49)
   ];
   
-  localStorage.setItem('worklish_progress', JSON.stringify(progress));
-  return progress;
+  // Sync to Firebase if available
+  if (updateProfileFn) {
+    updateProfileFn({ progress: p }).catch(e => console.error("Firebase progress sync failed:", e));
+  }
+  
+  return p;
 };
 
-export const getDailyCount = (type) => {
-  const progress = getProgress();
+export const getDailyCount = (type, userProfile) => {
+  const progress = getProgress(userProfile);
   const today = new Date().toISOString().split('T')[0];
   
   return (progress.history || []).filter(item => {
@@ -69,27 +88,45 @@ export const canPractice = (type, userProfile) => {
   if (!userProfile) return true; // Default to allow if profile not loaded
   
   const status = userProfile?.subscription_status || 'free';
+  const progress = getProgress(userProfile);
+  
+  // Enterprise: Ilimitado todo
   if (status === 'enterprise') return true;
   
-  const progress = getProgress();
-  
+  // Pro plan limits
   if (status === 'pro') {
-    // If Pro, limit total minutes (this could be per month, but for simplicity we use totalMinutes here)
-    // Or we filter history for current month
-    const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-    const monthlyMinutes = (progress.history || [])
-      .filter(item => item.date.startsWith(thisMonth))
-      .reduce((acc, item) => acc + (item.type === 'video' ? 5 : 0), 0); // Assuming 5 min per session for simplicity
-      
-    if (type === 'video' && monthlyMinutes >= 30) return false;
+    if (type === 'video') {
+      const dailyVideoCount = getDailyCount('video', userProfile);
+      if (dailyVideoCount >= 1) return false; // 1 sesión de 5 min cada 24h
+    }
     return true;
   }
   
+  // Trial plan limits
+  if (status === 'trial') {
+    if (type === 'video') {
+      const dailyVideoCount = getDailyCount('video', userProfile);
+      if (dailyVideoCount >= 1) return false; // 1 sesión de 5 min en el trial
+    }
+    return true;
+  }
+
   // Free plan limits
-  const dailyCount = getDailyCount(type);
+  const dailyCount = getDailyCount(type, userProfile);
   if (type === 'text' && dailyCount >= 5) return false;
   if (type === 'voice' && dailyCount >= 2) return false;
-  if (type === 'video') return false; // Free can't do video
+  if (type === 'video') return false; 
   
   return true;
+};
+
+export const getTrialDaysLeft = (userProfile) => {
+  if (!userProfile || userProfile.subscription_status !== 'trial' || !userProfile.subscription_end) {
+    return null;
+  }
+  const now = new Date();
+  const end = new Date(userProfile.subscription_end);
+  const diffTime = end - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 0;
 };

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Worklish</string>
+    <string name="title_activity_main">Worklish</string>
+    <string name="package_name">com.worklish.app</string>
+    <string name="custom_url_scheme">com.worklish.app</string>
+</resources>

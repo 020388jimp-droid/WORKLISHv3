@@ -21,11 +21,13 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Progress } from '../components/ui/progress';
-import { updateProgress, canPractice } from '../lib/utils';
+import { updateProgress, canPractice, getTrialDaysLeft } from '../lib/utils';
 import { practiceVoice, generateSpeech } from '../lib/firebase';
+import { showInterstitialAd } from '../lib/ads';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster, toast } from 'sonner';
+import { safeSpeech, playProfessionalSpeech } from '../lib/speech';
 
 export const VoicePractice = () => {
   const navigate = useNavigate();
@@ -36,6 +38,7 @@ export const VoicePractice = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [expectedText, setExpectedText] = useState('');
+  const [isPlayingFeedback, setIsPlayingFeedback] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [isAudioEnabled, setIsAudioEnabled] = useState(() => {
     return localStorage.getItem('isAudioEnabled') === 'true';
@@ -46,47 +49,54 @@ export const VoicePractice = () => {
   const timerRef = useRef(null);
 
   const samplePhrases = [
-    "I would like to schedule a meeting to discuss the project timeline.",
-    "Thank you for your email. I will review the proposal.",
-    "Could you please clarify the requirements for this task.",
-    "We need to prioritize our goals for the next sprint."
+    { en: "I would like to schedule a meeting to discuss the project timeline.", es: "Me gustaría programar una reunión para discutir el cronograma del proyecto." },
+    { en: "Thank you for your email. I will review the proposal.", es: "Gracias por su correo. Revisaré la propuesta." },
+    { en: "Could you please clarify the requirements for this task.", es: "¿Podría aclarar los requisitos para esta tarea, por favor?" },
+    { en: "We need to prioritize our goals for the next sprint.", es: "Necesitamos priorizar nuestros objetivos para el próximo sprint." }
   ];
+  useEffect(() => {
+    if (!isAudioEnabled) safeSpeech.cancel();
+  }, [isAudioEnabled]);
 
   useEffect(() => {
-    localStorage.setItem('isAudioEnabled', isAudioEnabled);
-    if (!isAudioEnabled) window.speechSynthesis.cancel();
-  }, [isAudioEnabled]);
+    const daysLeft = getTrialDaysLeft(userProfile);
+    if (daysLeft !== null) {
+      toast.info(`Te quedan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'} de tu prueba gratuita. ¡Aprovéchalos!`, {
+        icon: '🎁',
+        duration: 5000
+      });
+    }
+  }, [userProfile]);
 
   const speak = useCallback((textToSpeak) => {
     if (!isAudioEnabled) return;
-    window.speechSynthesis.cancel();
+    safeSpeech.cancel();
     
     const isMainlySpanish = (textToSpeak.match(/[áéíóúñ¿¡]/g) || []).length > 2;
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = isMainlySpanish ? 'es-MX' : 'en-US';
     
     // Asegurar que las voces carguen
-    const voices = window.speechSynthesis.getVoices();
+    const voices = safeSpeech.getVoices();
     const preferredVoice = voices.find(v => v.lang.includes(utterance.lang) && v.name.includes('Google')) || 
                            voices.find(v => v.lang.includes(utterance.lang));
     
     if (preferredVoice) utterance.voice = preferredVoice;
     utterance.rate = 1.0;
-    window.speechSynthesis.speak(utterance);
+    safeSpeech.speak(utterance);
   }, [isAudioEnabled]);
 
   const playTutorAudio = async (textToPlay) => {
     if (!isAudioEnabled) return;
+    if (isPlayingFeedback) return;
+    
+    setIsPlayingFeedback(true);
     try {
-      const { audioContent } = await generateSpeech(textToPlay, userProfile?.preferred_voice || 'orion');
-      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-      await audio.play();
+      await playProfessionalSpeech(textToPlay, userProfile?.preferred_voice || 'orion');
+      setIsPlayingFeedback(false);
     } catch (err) {
-      console.error("New audio engine failed, falling back to local TTS:", err);
-      toast.error(`Motor Premium: ${err.message || 'Fallo de conexión'}`);
-      // Limpieza de emergencia para el robot de respaldo
-      const cleanText = textToPlay.replace(/\*+/g, '');
-      speak(cleanText);
+      console.error('[Voice] Audio error', err);
+      setIsPlayingFeedback(false);
     }
   };
 
@@ -126,7 +136,7 @@ export const VoicePractice = () => {
     if (!audioBlob) return;
 
     if (!canPractice('voice', userProfile)) {
-      toast.error(t('common.limit_reached') || 'Has alcanzado el límite diario para tu plan.');
+      toast.error('Has alcanzado el límite diario para tu plan.');
       navigate('/pricing');
       return;
     }
@@ -148,7 +158,7 @@ export const VoicePractice = () => {
       setResult(cleanData);
 
       try {
-        updateProgress('voice', data.accuracy_score);
+        updateProgress('voice', data.accuracy_score, userProfile, updateProfile);
       } catch (err) {
         console.error("Progress save failed:", err);
       }
@@ -158,9 +168,13 @@ export const VoicePractice = () => {
       if (isAudioEnabled) {
         const scorePrefix = feedbackLang === 'en' ? `Your score is ` : `Tu puntaje es de `;
         const percentSuffix = feedbackLang === 'en' ? ` percent. ` : ` por ciento. `;
-        const scoreFeedback = `${scorePrefix}${data.accuracy_score}${percentSuffix}${cleanFeedback}`;
+        const scoreFeedback = `${scorePrefix}${Math.round(data.accuracy_score)}${percentSuffix}${cleanFeedback}`;
         setTimeout(() => playTutorAudio(scoreFeedback), 600);
       }
+      
+      // Mostrar anuncio si el usuario tiene plan gratuito (se retrasa para no cortar el primer audio de feedback)
+      setTimeout(() => showInterstitialAd(userProfile), 3500);
+      
     } catch (error) {
       console.error("AI Analysis failed:", error);
       toast.error('Error de conexión con la IA. Intenta de nuevo.');
@@ -174,7 +188,7 @@ export const VoicePractice = () => {
     setResult(null);
     setRecordingTime(0);
     setExpectedText('');
-    window.speechSynthesis.cancel();
+    safeSpeech.cancel();
   };
 
   // —————————————————————————————————————————
@@ -188,7 +202,6 @@ export const VoicePractice = () => {
       // Check if this part is an English word enclosed in parentheses
       if (part.startsWith('(') && part.endsWith(')')) {
         const cleanWord = part.slice(1, -1).trim(); // Remove parentheses
-        const isSp = /[áéíóúñÁÉÍÓÚÑ¿¡]/.test(cleanWord);
         
         return (
           <button
@@ -196,14 +209,7 @@ export const VoicePractice = () => {
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              window.speechSynthesis.cancel();
-              const utter = new SpeechSynthesisUtterance(cleanWord);
-              utter.lang = isSp ? 'es-MX' : 'en-US';
-              const voices = window.speechSynthesis.getVoices();
-              utter.voice = voices.find(v => v.lang.startsWith(isSp ? 'es' : 'en') && v.name.includes('Google')) ||
-                            voices.find(v => v.lang.startsWith(isSp ? 'es' : 'en')) || null;
-                            
-              window.speechSynthesis.speak(utter);
+              playProfessionalSpeech(cleanWord, userProfile?.preferred_voice || 'orion');
             }}
             className={`font-black tracking-wide inline-flex items-center gap-1 mx-1 px-2 py-0.5 rounded-md transition-all active:scale-95 cursor-pointer shadow-sm ${
               type === 'transcription' 
@@ -239,7 +245,7 @@ export const VoicePractice = () => {
            </div>
         </motion.div>
 
-        <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2 pr-5 rounded-2xl backdrop-blur-3xl self-start md:self-auto shadow-xl ring-1 ring-white/5">
+        <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-2 pr-5 rounded-2xl backdrop-blur-3xl self-start md:self-auto shadow-xl ring-1 ring-white/5" id="premium-voice-toggle">
           <div 
             onClick={() => setIsAudioEnabled(!isAudioEnabled)}
             className={`w-14 h-8 rounded-full relative cursor-pointer transition-all duration-500 ease-in-out ${isAudioEnabled ? 'bg-gradient-to-r from-[#06b6d4] to-[#0891b2]' : 'bg-slate-700'}`}
@@ -304,7 +310,7 @@ export const VoicePractice = () => {
 
             {audioBlob && !isRecording && (
               <Button onClick={handleSubmit} disabled={loading} className="w-full bg-gradient-to-r from-[#7c3aed] to-[#4f46e5] text-white h-18 md:h-24 rounded-[2rem] font-black text-xl md:text-2xl shadow-[0_15px_40px_rgba(124,58,237,0.3)] hover:scale-[1.01] transition-all flex items-center justify-center gap-4 border-0">
-                {loading ? <Loader2 className="animate-spin" size={32}/> : <><Sparkles size={28} strokeWidth={2.5}/> Analizar con Gemini</>}
+                {loading ? <Loader2 className="animate-spin" size={32}/> : <><Sparkles size={28} strokeWidth={2.5}/> <span>Analizar con Gemini</span></>}
               </Button>
             )}
           </Card>
@@ -319,11 +325,11 @@ export const VoicePractice = () => {
                     <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.5em] mb-6 relative z-10">Puntaje de Precisión</p>
                     <div className="relative inline-flex items-center justify-center mb-4 z-10">
                        <span className="text-7xl md:text-9xl font-black text-white tracking-tighter" style={{ fontFamily: "'Outfit', sans-serif" }}>
-                         {result.accuracy_score}
+                         {Math.round(result.accuracy_score)}
                          <span className="text-2xl md:text-4xl text-[#10b981] ml-1">%</span>
                        </span>
                     </div>
-                    <Progress value={result.accuracy_score} className="h-2.5 bg-white/5 rounded-full shadow-inner overflow-hidden relative z-10 mx-auto" />
+                    <Progress value={Math.round(result.accuracy_score)} className="h-2.5 bg-white/5 rounded-full shadow-inner overflow-hidden relative z-10 mx-auto" />
                     <div className="absolute inset-0 bg-[#06b6d4]/5 blur-[80px] rounded-full -z-10 group-hover:bg-[#06b6d4]/10 transition-all duration-700" />
                   </div>
                   
@@ -342,11 +348,16 @@ export const VoicePractice = () => {
                         <h3 className="text-white font-black text-[10px] uppercase tracking-[0.3em] flex items-center gap-2 text-[#f59e0b]"><Lightbulb size={16} strokeWidth={3}/> Análisis del Tutor</h3>
                         <Button 
                            onClick={() => playTutorAudio(`Tu puntaje es de ${result.accuracy_score} por ciento. ${result.pronunciation_feedback}`)}
+                           disabled={isPlayingFeedback}
                            variant="ghost" 
                            size="sm"
-                           className="text-[#f59e0b] hover:bg-[#f59e0b]/10 p-3 h-auto rounded-xl border border-[#f59e0b]/20"
+                           className={`p-3 h-auto rounded-xl border transition-all ${
+                             isPlayingFeedback 
+                               ? 'text-[#f59e0b]/40 border-[#f59e0b]/10 cursor-not-allowed' 
+                               : 'text-[#f59e0b] hover:bg-[#f59e0b]/10 border-[#f59e0b]/20'
+                           }`}
                         >
-                           <Volume2 size={24} strokeWidth={2.5}/>
+                           <Volume2 size={24} strokeWidth={2.5} className={isPlayingFeedback ? 'animate-pulse' : ''}/>
                         </Button>
                       </div>
                       <div className="p-6 md:p-8 bg-gradient-to-br from-[#f59e0b]/5 to-[#f59e0b]/10 border border-[#f59e0b]/20 rounded-3xl text-slate-300 text-sm md:text-base leading-relaxed font-semibold shadow-2xl relative">
@@ -359,18 +370,23 @@ export const VoicePractice = () => {
 
               ) : (
                 <div className="h-full flex flex-col items-center justify-center space-y-12 py-10 md:py-20 relative z-10">
-                  <div className="w-full space-y-3">
+                  <div className="w-full space-y-3" id="practice-scenarios">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] text-center mb-8">Sugerencias de Práctica</p>
                     <div className="grid gap-3">
-                      {samplePhrases.map((phrase, i) => (
+                      {samplePhrases.map((phraseObj, i) => (
                         <button 
                           key={i} 
-                          onClick={() => setExpectedText(phrase)}
+                          onClick={() => setExpectedText(phraseObj.en)}
                           className="w-full bg-white/[0.02] border border-white/5 p-5 md:p-6 rounded-2xl text-left text-sm text-slate-500 hover:text-white hover:border-[#06b6d4]/40 transition-all font-semibold group flex items-center justify-between ring-1 ring-white/5 relative overflow-hidden"
                         >
                            <div className="absolute inset-0 bg-[#06b6d4]/0 group-hover:bg-[#06b6d4]/5 transition-all duration-500" />
-                           <span className="truncate pr-4 relative z-10">"{phrase}"</span>
-                           <ChevronRight size={18} className="text-[#06b6d4] opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 relative z-10" />
+                           <div className="flex flex-col truncate pr-4 relative z-10">
+                             <span>"{phraseObj.en}"</span>
+                             {userProfile?.language_level === 'beginner' && (
+                               <span className="text-xs text-slate-500 mt-1 font-normal">({phraseObj.es})</span>
+                             )}
+                           </div>
+                           <ChevronRight size={18} className="text-[#06b6d4] opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0 relative z-10 shrink-0" />
                         </button>
                       ))}
                     </div>

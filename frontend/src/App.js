@@ -1,6 +1,8 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
+import { Capacitor } from "@capacitor/core";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -12,6 +14,8 @@ import VideoCall from "./pages/VideoCall";
 import Settings from "./pages/Settings";
 import { PricingPage } from "./pages/PricingPage";
 import { FeaturesPage } from "./pages/FeaturesPage";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+import HowToSay from "./pages/HowToSay";
 
 // Components
 import { DashboardLayout } from "./components/DashboardLayout";
@@ -19,6 +23,49 @@ import { DashboardLayout } from "./components/DashboardLayout";
 // Context
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+
+// ─── Android Hardware Back Button Handler ───
+const BackButtonHandler = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let listener = null;
+
+    const setup = async () => {
+      try {
+        const { App } = await import("@capacitor/app");
+        listener = await App.addListener("backButton", ({ canGoBack }) => {
+          // Check if sidebar is open
+          const mobileOverlay = document.getElementById("mobile-overlay");
+          if (mobileOverlay) {
+            mobileOverlay.click(); // This closes the sidebar
+            return;
+          }
+
+          // If we're at the root/landing page, minimize the app instead of closing it
+          if (!canGoBack || location.pathname === "/" || location.pathname === "/dashboard") {
+            App.minimizeApp();
+          } else {
+            navigate(-1);
+          }
+        });
+      } catch (err) {
+        console.warn("[BackButton] Failed to setup:", err);
+      }
+    };
+
+    setup();
+
+    return () => {
+      if (listener) listener.remove();
+    };
+  }, [navigate, location.pathname]);
+
+  return null;
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -46,12 +93,14 @@ const ProtectedRoute = ({ children }) => {
 function AppRoutes() {
   return (
     <BrowserRouter>
+      <BackButtonHandler />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
         
         {/* Protected routes */}
         <Route 
@@ -90,6 +139,16 @@ function AppRoutes() {
             <ProtectedRoute>
               <DashboardLayout>
                 <VideoCall />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/how-to-say" 
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <HowToSay />
               </DashboardLayout>
             </ProtectedRoute>
           } 

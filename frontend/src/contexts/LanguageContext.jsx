@@ -55,6 +55,7 @@ export const translations = {
   'nav.writing': { es: 'Escritura', en: 'Writing' },
   'nav.voice': { es: 'Voz', en: 'Voice' },
   'nav.video': { es: 'Video', en: 'Video' },
+  'nav.howToSay': { es: 'Cómo se dice', en: 'How to say' },
   
   // Landing page
   'landing.badge': { es: 'Potenciado con IA', en: 'AI Powered' },
@@ -172,6 +173,8 @@ export const translations = {
   'dashboard.voiceDesc': { es: 'Perfecciona tu pronunciación', en: 'Perfect your pronunciation' },
   'dashboard.videoTitle': { es: 'Video Llamada IA', en: 'AI Video Call' },
   'dashboard.videoDesc': { es: 'Practica conversaciones en vivo', en: 'Practice live conversations' },
+  'dashboard.howToSayTitle': { es: 'Cómo se dice', en: 'How to say' },
+  'dashboard.howToSayDesc': { es: 'Aprende la mejor forma de expresar tus ideas', en: 'Learn the best way to express your ideas' },
   'dashboard.sessionsCompleted': { es: 'sesiones completadas', en: 'sessions completed' },
   'dashboard.weeklyGoal': { es: 'Meta Semanal', en: 'Weekly Goal' },
   'dashboard.sessionsThisWeek': { es: 'Sesiones esta semana', en: 'Sessions this week' },
@@ -273,6 +276,7 @@ export const translations = {
   'sidebar.writing': { es: 'Escritura', en: 'Writing' },
   'sidebar.pronunciation': { es: 'Pronunciación', en: 'Pronunciation' },
   'sidebar.videoCall': { es: 'Video Call', en: 'Video Call' },
+  'sidebar.howToSay': { es: 'Cómo se dice', en: 'How to say' },
   'sidebar.settings': { es: 'Configuración', en: 'Settings' },
   'sidebar.logout': { es: 'Cerrar Sesión', en: 'Logout' },
   

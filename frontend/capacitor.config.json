@@ -1,0 +1,12 @@
+{
+  "appId": "com.worklish.app",
+  "appName": "Worklish",
+  "webDir": "build",
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "697729647513-8da8prcq5cbbmkj3l0h4k01micg974pa.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  }
+}

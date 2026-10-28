@@ -1,23 +1,55 @@
-# Firebase
-.firebase
-firebase.json
-
 # Dependencies
-node_modules
+node_modules/
+.pnp
+.pnp.js
 
 # Build output
-build
-dist
+build/
+dist/
+out/
+*.apk
+*.aab
+*.ipa
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/local.properties
+frontend/android/app/release/
 
 # Environment variables
 .env
 .env.*
 !.env.example
 
+# Secrets — never commit these
+*.jks
+*.keystore
+google-services.json
+GoogleService-Info.plist
+serviceAccount*.json
+release-key*
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
 # Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Other
+# Editors and OS
+.vscode/
+.idea/
+*.iml
 .DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+diff*.txt

@@ -8,7 +8,8 @@ import {
   LogOut,
   Flame,
   Crown,
-  X
+  X,
+  Languages
 } from 'lucide-react';
 import { getProgress } from '../lib/utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,13 +28,20 @@ export const Sidebar = ({ isOpen, onClose }) => {
     navigate('/');
   };
 
-  const navItems = [
+  const allNavItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('sidebar.dashboard') },
+    { path: '/how-to-say', icon: Languages, label: t('sidebar.howToSay') },
     { path: '/practice/text', icon: PenTool, label: t('sidebar.writing') },
     { path: '/practice/voice', icon: Mic, label: t('sidebar.pronunciation') },
     { path: '/practice/video', icon: Video, label: t('sidebar.videoCall') },
     { path: '/settings', icon: Settings, label: t('sidebar.settings') },
   ];
+
+  // Ocultar Video Call para usuarios free
+  const navItems = allNavItems.filter(item => {
+    if (item.path === '/practice/video' && userProfile?.subscription_status === 'free') return false;
+    return true;
+  });
 
   const isActive = (path) => location.pathname === path;
 
@@ -42,12 +50,14 @@ export const Sidebar = ({ isOpen, onClose }) => {
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
+          id="mobile-overlay"
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={onClose}
         />
       )}
 
       <aside 
+        id="main-sidebar"
         data-testid="main-sidebar"
         className={`fixed left-0 top-0 h-screen w-64 bg-[#0b0b14] border-r border-[#1f1f2a] flex flex-col overflow-y-auto z-50 transition-transform duration-300 transform 
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
@@ -85,7 +95,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           </div>
 
           {/* Streak */}
-          <div className="mt-4 flex items-center gap-2 text-sm">
+          <div className="mt-4 flex items-center gap-2 text-sm" id="sidebar-streak">
             <div className="flex items-center gap-1 text-orange-400">
               <Flame size={16} className="fill-orange-400" />
               <span className="font-bold">{progress.streak || 0}</span>
@@ -99,6 +109,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
           {navItems.map((item) => (
             <Link
               key={item.path}
+              id={`nav-${item.path.split('/').pop() || 'dashboard'}`}
               to={item.path}
               onClick={onClose}
               data-testid={`nav-${item.path.split('/').pop()}`}
@@ -115,7 +126,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Daily progress */}
-        <div className="p-4 mx-4 mb-4 rounded-xl bg-[#1a1a2e] border border-white/5">
+        <div id="sidebar-progress" className="p-4 mx-4 mb-4 rounded-xl bg-[#1a1a2e] border border-white/5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-slate-400">{t('dashboard.dailyProgress')}</span>
             <span className="text-sm font-bold text-[#06b6d4]">
@@ -135,6 +146,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
         <div className="p-4 border-t border-white/5">
           <button
             onClick={handleLogout}
+            id="sidebar-logout"
             data-testid="sidebar-logout"
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >

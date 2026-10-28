@@ -2,7 +2,7 @@
   "name": "worklish-functions",
   "description": "WORKLISH Cloud Functions - Backend para Firebase",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "scripts": {

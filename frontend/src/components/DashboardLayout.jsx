@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileHeader } from './MobileHeader';
+import { OnboardingTutorial } from './OnboardingTutorial';
 
 export const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[#0f0f1a]">
+      <OnboardingTutorial />
       {/* Mobile Header */}
       <MobileHeader onOpen={() => setIsSidebarOpen(true)} />
       

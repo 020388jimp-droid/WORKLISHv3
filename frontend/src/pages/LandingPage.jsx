@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -16,10 +16,35 @@ import { Navbar } from '../components/Navbar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
+const FUNCTIONS_BASE_URL =
+  process.env.REACT_APP_FUNCTIONS_URL ||
+  "https://us-central1-worklish-app-v2.cloudfunctions.net";
+
+const formatNumber = (num) => {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M+`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K+`;
+  return `${num}+`;
+};
+
 export const LandingPage = () => {
   const { appLang } = useLanguage();
   const isEn = appLang === 'en';
   const [modalOpen, setModalOpen] = useState(null); // 'privacy', 'terms', 'contact'
+  const [stats, setStats] = useState({ total_users: null, total_practices: null, avg_score: null });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${FUNCTIONS_BASE_URL}/getPublicStats`);
+        const data = await res.json();
+        setStats(data);
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+        setStats({ total_users: 0, total_practices: 0, avg_score: 0 });
+      }
+    };
+    fetchStats();
+  }, []);
 
   const modalContent = {
     privacy: {
@@ -165,19 +190,25 @@ export const LandingPage = () => {
                 </Link>
               </div>
 
-              {/* Stats */}
+              {/* Stats - Real Data */}
               <div className="flex gap-8 mt-12 pt-8 border-t border-white/10">
                 <div>
-                  <p className="text-3xl font-bold text-white">10K+</p>
+                  <p className="text-3xl font-bold text-white">
+                    {stats.total_users !== null ? formatNumber(stats.total_users) : '...'}
+                  </p>
                   <p className="text-slate-400 text-sm">{isEn ? 'Active users' : 'Usuarios activos'}</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-white">95%</p>
-                  <p className="text-slate-400 text-sm">{isEn ? 'Reported improvement' : 'Mejora reportada'}</p>
+                  <p className="text-3xl font-bold text-white">
+                    {stats.total_practices !== null ? formatNumber(stats.total_practices) : '...'}
+                  </p>
+                  <p className="text-slate-400 text-sm">{isEn ? 'Practices completed' : 'Prácticas realizadas'}</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-bold text-white">4.9</p>
-                  <p className="text-slate-400 text-sm">{isEn ? 'Rating' : 'Calificación'}</p>
+                  <p className="text-3xl font-bold text-white">
+                    {stats.avg_score !== null ? `${stats.avg_score}%` : '...'}
+                  </p>
+                  <p className="text-slate-400 text-sm">{isEn ? 'Avg. score' : 'Puntuación prom.'}</p>
                 </div>
               </div>
             </motion.div>

@@ -9,12 +9,13 @@ import { Card } from '../components/ui/card';
 import { LevelSelector } from '../components/LevelSelector';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { resetPassword } from '../lib/firebase';
 import { Toaster, toast } from 'sonner';
 
 export const AuthPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, register, googleLogin, isAuthenticated, loading: authLoading } = useAuth();
+  const { login, register, googleLogin, isAuthenticated, loading: authLoading, logout, user } = useAuth();
   const { t, setLevel, level } = useLanguage();
   
   const [isLogin, setIsLogin] = useState(searchParams.get('mode') !== 'register');
@@ -22,6 +23,8 @@ export const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [selectedLevel, setSelectedLevel] = useState(level);
+  const [showResend, setShowResend] = useState(false);
+  const [unverifiedUser, setUnverifiedUser] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -37,6 +40,7 @@ export const AuthPage = () => {
 
   useEffect(() => {
     setStep(1);
+    setShowResend(false);
   }, [isLogin]);
 
   const handleSubmit = async (e) => {
@@ -51,34 +55,69 @@ export const AuthPage = () => {
 
     try {
       if (isLogin) {
-        await login(formData.email, formData.password);
+        const user = await login(formData.email, formData.password);
+        if (!user.emailVerified) {
+          throw new Error('email-not-verified');
+        }
         toast.success(t('auth.welcomeBack'));
       } else {
         await register(formData.email, formData.password, formData.name);
         setLevel(selectedLevel);
         localStorage.setItem('worklish_language_level', selectedLevel);
-        toast.success(t('auth.accountCreated'));
+        // Quitamos el logout automático para permitir el reenvío si es necesario
+        toast.success('Cuenta creada. Revisa tu bandeja de entrada para verificar tu correo.');
+        setStep(1);
+        setIsLogin(true);
+        setFormData(prev => ({ ...prev, password: '' }));
+        setLoading(false);
+        return; // Salir para no navegar al dashboard
       }
-      
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
+      // La navegación al dashboard se maneja por el useEffect que espera isAuthenticated
       
     } catch (error) {
       console.error('Auth error:', error);
       let errorMessage = 'Error al procesar la solicitud';
       
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        errorMessage = 'Credenciales incorrectas';
+      if (error.message === 'email-not-verified') {
+        errorMessage = 'Por favor, verifica tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada o spam.';
+        setShowResend(true);
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'Tu correo no aparece en el sistema. ¿Quieres registrarte?';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Contraseña incorrecta. Por favor, verifica tus datos.';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'El correo o la contraseña son incorrectos. Verifica tus datos.';
       } else if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'Este correo ya está registrado';
+        errorMessage = 'Este correo ya tiene una cuenta activa. Intenta iniciar sesión.';
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'La contraseña debe tener al menos 6 caracteres';
       } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Correo electrónico inválido';
+        errorMessage = 'El formato de correo es inválido';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Demasiados intentos. Tu cuenta ha sido bloqueada temporalmente.';
       }
       
       toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    try {
+      setLoading(true);
+      // Intentamos re-enviar usando el auth.currentUser que quedó de la sesión fallida
+      const { auth, sendEmailVerification } = await import('../lib/firebase');
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+        toast.success('¡Enlace de verificación reenviado! Revisa tu correo.');
+        setShowResend(false);
+      } else {
+        toast.error('Sesión expirada. Por favor, intenta iniciar sesión de nuevo.');
+      }
+    } catch (error) {
+      console.error('Resend error:', error);
+      toast.error('Error al reenviar el correo. Intenta más tarde.');
     } finally {
       setLoading(false);
     }
@@ -273,9 +312,31 @@ export const AuthPage = () => {
 
                   {isLogin && (
                     <div className="text-right">
-                      <a href="#" className="text-sm text-[#7c3aed] hover:text-[#8b5cf6] transition-colors">
+                      <button 
+                        type="button"
+                        onClick={async () => {
+                          const email = formData.email?.trim();
+                          if (!email) {
+                            toast.error('Escribe tu correo electrónico primero en el campo de arriba.');
+                            return;
+                          }
+                          try {
+                            await resetPassword(email);
+                            toast.success(`Se envió un enlace de recuperación a ${email}. Revisa tu bandeja de entrada (y spam).`);
+                          } catch (err) {
+                            if (err.code === 'auth/user-not-found') {
+                              toast.error('No hay ninguna cuenta con ese correo.');
+                            } else if (err.code === 'auth/invalid-email') {
+                              toast.error('El correo no es válido.');
+                            } else {
+                              toast.error('Error al enviar el correo de recuperación.');
+                            }
+                          }
+                        }}
+                        className="text-sm text-[#7c3aed] hover:text-[#8b5cf6] transition-colors cursor-pointer"
+                      >
                         {t('auth.forgotPassword')}
-                      </a>
+                      </button>
                     </div>
                   )}
 
@@ -296,6 +357,19 @@ export const AuthPage = () => {
                       </>
                     )}
                   </Button>
+
+                  {isLogin && showResend && (
+                    <div className="text-center mt-4">
+                      <p className="text-xs text-slate-400 mb-1">¿No recibiste el correo?</p>
+                      <button 
+                        type="button"
+                        onClick={handleResendVerification}
+                        className="text-sm font-medium text-[#7c3aed] hover:text-[#8b5cf6] underline underline-offset-4"
+                      >
+                        Reenviar enlace de verificación
+                      </button>
+                    </div>
+                  )}
                 </form>
 
                 <div className="relative my-8">
@@ -328,7 +402,7 @@ export const AuthPage = () => {
                     {t('auth.terms')}{' '}
                     <a href="#" className="text-[#7c3aed] hover:underline">{t('auth.termsLink')}</a>
                     {' '}{t('common.and')}{' '}
-                    <a href="#" className="text-[#7c3aed] hover:underline">{t('auth.privacyLink')}</a>
+                    <Link to="/privacy" target="_blank" className="text-[#7c3aed] hover:underline">{t('auth.privacyLink')}</Link>
                   </p>
                 )}
               </motion.div>

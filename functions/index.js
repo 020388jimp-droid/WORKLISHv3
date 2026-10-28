@@ -4,7 +4,7 @@ const admin = require('firebase-admin');
 const { getFirestore } = require('firebase-admin/firestore');
 const cors = require('cors')({ origin: true });
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const textToSpeech = require('@google-cloud/text-to-speech');
+// text-to-speech is loaded lazily in getTtsClient() to avoid deployment timeouts
 const Busboy = require('busboy');
 
 // INICIALIZAR FIREBASE ADMIN
@@ -12,17 +12,41 @@ admin.initializeApp();
 
 const db = getFirestore('worklish');
 
+// Helper: incrementar contadores globales de estadísticas
+const incrementStats = async (score) => {
+  try {
+    const statsRef = db.collection('stats').doc('global');
+    const updateData = {
+      total_practices: admin.firestore.FieldValue.increment(1)
+    };
+    if (typeof score === 'number' && score > 0) {
+      updateData.total_score_sum = admin.firestore.FieldValue.increment(score);
+      updateData.total_score_count = admin.firestore.FieldValue.increment(1);
+    }
+    await statsRef.set(updateData, { merge: true });
+  } catch (e) {
+    console.error('Stats increment error:', e);
+  }
+};
+
 // =======================================================
 // GEMINI CONFIG
 // =======================================================
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-if (!GEMINI_API_KEY) {
-  console.error("FATAL: GEMINI_API_KEY secret not found.");
-}
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+let genAI;
+const getGenAI = () => {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    console.error("GEMINI_API_KEY not found in environment");
+    // During deployment analysis, we might not have the key.
+    // We return a mock or handle it inside the functions.
+    return new GoogleGenerativeAI("DUMMY_KEY"); 
+  }
+  if (!genAI) {
+    genAI = new GoogleGenerativeAI(key);
+  }
+  return genAI;
+};
 
 // CONFIGURACIÓN DE CREDENCIALES GOOGLE CLOUD:
 // 1. Ve a Google Cloud Console -> APIs y Servicios -> Credenciales.
@@ -30,12 +54,20 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 // 3. Descarga el archivo JSON de la clave.
 // 4. En Producción (Firebase), las funciones detectarán la cuenta de servicio automáticamente.
 // 5. Para desarrollo local, usa: export GOOGLE_APPLICATION_CREDENTIALS="ruta/a/tu/clave.json"
-const ttsClient = new textToSpeech.TextToSpeechClient();
+let _ttsClient = null;
+const getTtsClient = () => {
+  if (!_ttsClient) {
+    const textToSpeech = require('@google-cloud/text-to-speech');
+    _ttsClient = new textToSpeech.TextToSpeechClient();
+  }
+  return _ttsClient;
+};
 
 setGlobalOptions({
+  region: 'us-central1',
   maxInstances: 20,
   timeoutSeconds: 120,
-  memory: "512MiB"
+  memory: '512MiB'
 });
 
 // =======================================================
@@ -66,7 +98,21 @@ const parseGeminiJSON = (text) => {
   if (cleanText.endsWith('```')) {
     cleanText = cleanText.slice(0, -3);
   }
-  return JSON.parse(cleanText.trim());
+  
+  cleanText = cleanText.trim();
+  
+  try {
+    return JSON.parse(cleanText);
+  } catch (error) {
+    // Fallback: Gemini a veces introduce saltos de línea o tabulaciones sin escapar dentro de los strings,
+    // lo que rompe JSON.parse. Reemplazamos saltos de línea con espacio para sanear el JSON.
+    console.warn("JSON Parse Error, attempting to clean control characters:", error.message);
+    const sanitizedText = cleanText
+      .replace(/\n/g, " ")
+      .replace(/\r/g, "")
+      .replace(/\t/g, " ");
+    return JSON.parse(sanitizedText);
+  }
 };
 
 // =======================================================
@@ -109,11 +155,17 @@ exports.practiceText = onRequest(async (req, res) => {
             ? 'Write all tips and feedback in SPANISH (español), but keep the corrected text in English.'
             : 'Write all tips and feedback in English.';
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = getGenAI().getGenerativeModel({ model: 'gemini-3.6-flash' });
 
         const formattingRule = 
           feedbackLang === 'es'
-            ? 'STRICT FORMATTING RULE: In your tips, always wrap English words/phrases in parentheses like (English word). NEVER use parentheses for Spanish text. Spanish titles should be bold like **Título:** without parentheses.'
+            ? `STRICT FORMATTING RULE (MANDATORY):
+- You MUST wrap fragments in English (words or full phrases) in parentheses like (English fragment).
+- CRITICAL: DO NOT wrap ANY Spanish text in parentheses. EVER.
+- NEVER wrap Spanish titles, connectors, or translations in parentheses.
+- Wrong: "(formal o casual)"
+- Correct: "formal o casual"
+- Example tip: "Deberías usar (schedule a meeting) en lugar de (make a talk)."`
             : 'Wrap English examples in parentheses like (example).';
 
         const prompt = `
@@ -128,13 +180,15 @@ Context: ${context || 'email'}.
 ${tipsInstruction}
 ${formattingRule}
 
+Provide a "grammar_score" and a "vocabulary_score" between 0 and 100 based on the professional quality of the text.
+
 Respond ONLY with valid JSON (no markdown, no backticks):
 
 {
   "corrected_text": "...",
   "tips": ["...", "..."],
-  "grammar_score": 0,
-  "vocabulary_score": 0
+  "grammar_score": 85,
+  "vocabulary_score": 70
 }
 `;
 
@@ -153,6 +207,10 @@ Respond ONLY with valid JSON (no markdown, no backticks):
           vocabulary_score: data.vocabulary_score,
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        // Incrementar estadísticas globales
+        const avgScore = Math.round((Number(data.grammar_score || 0) + Number(data.vocabulary_score || 0)) / 2);
+        await incrementStats(avgScore);
 
         return res.json(data);
 
@@ -240,7 +298,7 @@ exports.practiceVoice = onRequest(async (req, res) => {
         });
 
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = getGenAI().getGenerativeModel({ model: 'gemini-3.6-flash' });
 
         const langInstruction = feedbackLanguage === 'en'
           ? 'Provide all feedback and tips in English.'
@@ -249,7 +307,13 @@ exports.practiceVoice = onRequest(async (req, res) => {
         const formattingRule = 
           feedbackLanguage === 'en'
             ? 'Wrap English examples in parentheses like (example).'
-            : 'STRICT FORMATTING RULE: In your feedback and tips, always wrap English words/phrases in parentheses like (English word). NEVER use parentheses for Spanish text. Spanish titles should be bold like **Título:** without parentheses.';
+            : `STRICT FORMATTING RULE (MANDATORY):
+- You MUST wrap fragments in English (words or phrases) in parentheses like (English fragment).
+- CRITICAL: DO NOT wrap ANY Spanish text in parentheses. EVER.
+- NEVER wrap Spanish titles, connectors, or translations in parentheses.
+- Wrong: "(formal o casual)"
+- Correct: "formal o casual"
+- Suggestions or corrections in English should be wrapped.`;
 
         const prompt = `
 You are a professional English pronunciation coach.
@@ -264,13 +328,16 @@ Task:
 3. Provide helpful feedback on their pronunciation, stress, and intonation.
 4. Give 2-3 specific tips to improve.
 
+Provide an "accuracy_score" and a "fluency_score" (if possible) as integers between 0 and 100.
+
 ${langInstruction}
 ${formattingRule}
 
 Respond ONLY with valid JSON:
 {
   "transcribed_text": "...",
-  "accuracy_score": 0,
+  "accuracy_score": 85,
+  "fluency_score": 70,
   "pronunciation_feedback": "...",
   "tips": ["...", "..."]
 }
@@ -306,16 +373,17 @@ Respond ONLY with valid JSON:
           timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
 
+        // Incrementar estadísticas globales
+        await incrementStats(Number(data.accuracy_score || 0));
+
         return res.json(data);
 
       } catch (error) {
         console.error('practiceVoice Error:', error);
         return res.status(500).json({ error: error.message });
       }
-
     });
-
-  });
+});
 
 // =======================================================
 // VIDEO CALL / CONVERSACIÓN IA
@@ -331,18 +399,27 @@ exports.videoCall = onRequest(async (req, res) => {
 
       try {
         const user = await verifyAuth(req);
-        const { user_message, conversation_history, scenario, feedback_language } = req.body;
+        const { user_message, conversation_history, scenario, feedback_language, level } = req.body;
 
         if (!user_message || user_message.trim() === '') {
           return res.status(400).json({ error: 'user_message is required' });
         }
 
         const feedbackLang = feedback_language || 'es';
-        const langInstruction = feedbackLang === 'es'
-          ? 'Provide all tips and corrections in SPANISH, but keep the AI conversation in English.'
-          : 'Provide all tips, corrections, and the AI conversation in English.';
+        const userLevel = level || 'beginner';
+        
+        let langInstruction = '';
+        if (userLevel === 'beginner') {
+          langInstruction = 'The user is a BEGINNER. Provide all tips and corrections in SPANISH. VERY IMPORTANT: Speak in very simple English. For the AI conversation part, ALWAYS include a Spanish translation normally (NOT in parentheses). ONLY use parentheses for English words or phrases you want the user to practice.';
+        } else if (userLevel === 'intermediate') {
+          langInstruction = feedbackLang === 'es'
+            ? 'The user is INTERMEDIATE. Keep the AI conversation in natural English. Provide tips and corrections in Spanish. ONLY use parentheses for English words/phrases.'
+            : 'The user is INTERMEDIATE. Provide all tips, corrections, and the AI conversation in English. ONLY use parentheses for English words/phrases.';
+        } else {
+          langInstruction = 'The user is ADVANCED. Provide all tips, corrections, and the AI conversation entirely in Professional English. ONLY use parentheses for English words/phrases.';
+        }
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = getGenAI().getGenerativeModel({ model: 'gemini-3.6-flash' });
 
         // Construir historial de conversación
         const historyText = (conversation_history || [])
@@ -362,7 +439,10 @@ exports.videoCall = onRequest(async (req, res) => {
 
         const formattingRule = 
           feedbackLang === 'es'
-            ? 'STRICT FORMATTING RULE: In your response, tips, and corrections, always wrap English words/phrases in parentheses like (English word). NEVER use parentheses for Spanish text.'
+            ? `STRICT FORMATTING RULE (MANDATORY):
+- You MUST wrap fragments in English (words or full phrases) in parentheses like (English fragment).
+- DO NOT wrap any Spanish text in parentheses.
+- NEVER wrap Spanish labels like (Consejos:) or (Correcciones:).`
             : 'Wrap English examples in parentheses like (example).';
 
         const prompt = `
@@ -408,6 +488,90 @@ Respond ONLY with valid JSON (no markdown, no backticks):
     });
 
   });
+
+// =======================================================
+// HOW TO SAY
+// =======================================================
+
+exports.howToSay = onRequest(async (req, res) => {
+    cors(req, res, async () => {
+      if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+      }
+
+      try {
+        const user = await verifyAuth(req);
+        const { text, context, feedback_language } = req.body;
+
+        if (!text || text.trim() === '') {
+          return res.status(400).json({ error: 'Text is required' });
+        }
+
+        const feedbackLang = feedback_language || 'es';
+        const tipsInstruction =
+          feedbackLang === 'es'
+            ? 'Provide the phrase in English, and explain usage/examples in SPANISH (español).'
+            : 'Provide everything in English.';
+
+        const model = getGenAI().getGenerativeModel({ model: 'gemini-3.6-flash' });
+
+        const formattingRule = 
+          feedbackLang === 'es'
+            ? `STRICT FORMATTING RULE (MANDATORY):
+- You MUST wrap fragments in English (words or full phrases) in parentheses like (English fragment).
+- CRITICAL: DO NOT wrap ANY Spanish text in parentheses. EVER.
+- NEVER wrap Spanish titles, connectors, or translations in parentheses.
+- Wrong: "(formal o casual)"
+- Correct: "formal o casual"
+- Example: "La forma más común es (I would like to). Se usa en contextos formales como (meetings)."`
+            : 'Wrap English examples in parentheses like (example).';
+
+        const prompt = `
+You are a professional English translation and usage expert.
+A user wants to know how to say: "${text}"
+Context provided: ${context || 'general conversation'}.
+
+Task:
+1. Provide the most natural and professional way to say it in English.
+2. Provide 2-3 FULL ENGLISH examples of how to use the phrase in a complete sentence. DO NOT write the examples in Spanish. The entire sentence must be in English.
+3. Give recommendations or alternative ways to say it depending on the tone (formal/casual).
+
+${tipsInstruction}
+${formattingRule}
+
+Respond ONLY with valid JSON (no markdown, no backticks):
+{
+  "phrase": "The main English phrase (not in parentheses here, just the plain text)",
+  "examples": ["Full English example sentence 1 using (the translated phrase)", "Full English example sentence 2 using (the translated phrase)"],
+  "recommendations": "Advice with (English parts)"
+}
+`;
+
+        const result = await model.generateContent(prompt);
+        const responseText = (await result.response).text();
+        const data = parseGeminiJSON(responseText);
+
+        // Guardar en Firestore
+        await db.collection('practices').add({
+          userId: user.uid,
+          type: 'how_to_say',
+          original: text,
+          context: context || 'general',
+          phrase: data.phrase,
+          timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Incrementar estadísticas
+        await incrementStats();
+
+        return res.json(data);
+
+      } catch (error) {
+        console.error('howToSay Error:', error);
+        return res.status(500).json({ error: error.message });
+      }
+    });
+});
 
 // =======================================================
 // GET USER PROFILE
@@ -532,13 +696,14 @@ exports.generateSpeech = onRequest(async (req, res) => {
       const { text, voiceId } = req.body;
       if (!text) return res.status(400).send('Text is required');
 
-      // Mapeo de voces Gemini a Google Cloud TTS (Neural2 y Journey de alta fidelidad)
+      // Mapeo de voces Gemini a Google Cloud TTS (Neural2)
+      // Definimos una voz en inglés y su equivalente en español (mismo género y estilo similar)
       const voiceMap = {
-        'orion': { languageCode: 'en-US', name: 'en-US-Journey-D' },
-        'pegasus': { languageCode: 'en-US', name: 'en-US-Journey-F' },
-        'ursa': { languageCode: 'en-US', name: 'en-US-Neural2-H' },
-        'nova': { languageCode: 'en-US', name: 'en-US-Neural2-F' },
-        'eclipse': { languageCode: 'en-US', name: 'en-US-Neural2-J' }
+        'orion': { languageCode: 'en-US', name: 'en-US-Neural2-I', spanishName: 'es-US-Neural2-B' }, // Male deeper
+        'pegasus': { languageCode: 'en-US', name: 'en-US-Neural2-J', spanishName: 'es-US-Neural2-C' }, // Male calm
+        'ursa': { languageCode: 'en-US', name: 'en-US-Neural2-H', spanishName: 'es-US-Neural2-A' }, // Female engaged
+        'nova': { languageCode: 'en-US', name: 'en-US-Neural2-F', spanishName: 'es-ES-Neural2-C' }, // Female subtle
+        'eclipse': { languageCode: 'en-US', name: 'en-US-Neural2-E', spanishName: 'es-ES-Neural2-D' } // Female energetic
       };
 
       const selectedVoice = voiceMap[voiceId?.toLowerCase()] || voiceMap['orion'];
@@ -592,8 +757,8 @@ exports.generateSpeech = onRequest(async (req, res) => {
         let ssml = '<speak><prosody rate="medium" pitch="0st">';
         segments.forEach(s => {
             if(!s.text) return;
-            // Neural2 transiciona suavemente entre idiomas y no genera errores de SSML
-            const voiceName = s.lang === 'en' ? 'en-US-Neural2-F' : 'es-US-Neural2-A';
+            // Usamos la voz en inglés o su equivalente en español según el caso
+            const voiceName = s.lang === 'en' ? selectedVoice.name : selectedVoice.spanishName;
             ssml += `<voice name="${voiceName}">${s.text}</voice> `;
         });
         ssml += '</prosody></speak>';
@@ -603,14 +768,14 @@ exports.generateSpeech = onRequest(async (req, res) => {
       const request = {
         input: { ssml: convertToSSML(safeText) },
         voice: { 
-          // Voice fallback superior en caso de que todo el SSML no declare voz (por seguridad)
-          languageCode: 'en-US', 
-          name: 'en-US-Neural2-F'
+          // Voice fallback coincidente
+          languageCode: selectedVoice.languageCode, 
+          name: selectedVoice.name
         },
         audioConfig: { audioEncoding: 'MP3', pitch: 0, speakingRate: 1.0 },
       };
 
-      const [response] = await ttsClient.synthesizeSpeech(request);
+      const [response] = await getTtsClient().synthesizeSpeech(request);
       
       // Enviamos el audio como base64 para que el navegador lo reproduzca fácilmente
       res.set('Content-Type', 'application/json');
@@ -620,6 +785,43 @@ exports.generateSpeech = onRequest(async (req, res) => {
 
     } catch (error) {
       console.error('TTS Error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+});
+
+// =======================================================
+// GET PUBLIC STATS (No auth required - for Landing Page)
+// =======================================================
+
+exports.getPublicStats = onRequest(async (req, res) => {
+  cors(req, res, async () => {
+    try {
+      const statsDoc = await db.collection('stats').doc('global').get();
+      
+      if (!statsDoc.exists) {
+        return res.json({
+          total_users: 0,
+          total_practices: 0,
+          avg_score: 0
+        });
+      }
+
+      const data = statsDoc.data();
+      const totalUsers = data.total_users || 0;
+      const totalPractices = data.total_practices || 0;
+      const avgScore = data.total_score_count > 0 
+        ? Math.round(data.total_score_sum / data.total_score_count)
+        : 0;
+
+      return res.json({
+        total_users: totalUsers,
+        total_practices: totalPractices,
+        avg_score: avgScore
+      });
+
+    } catch (error) {
+      console.error('getPublicStats Error:', error);
       return res.status(500).json({ error: error.message });
     }
   });

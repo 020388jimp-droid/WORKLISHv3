@@ -11,6 +11,7 @@ export const MobileHeader = ({ onOpen }) => {
       </Link>
       
       <button 
+        id="mobile-menu-button"
         onClick={onOpen}
         className="p-2 text-slate-400 hover:text-white"
         aria-label="Abrir menú"

@@ -12,7 +12,8 @@ import {
   Globe,
   BookOpen,
   Volume2,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -25,7 +26,7 @@ import { Toaster, toast } from 'sonner';
 
 export const Settings = () => {
   const navigate = useNavigate();
-  const { userProfile, updateProfile, logout, isAuthenticated } = useAuth();
+  const { userProfile, updateProfile, logout, deleteAccount, isAuthenticated } = useAuth();
   const progress = getProgress();
   const { t, level, setLevel, currentLevel, appLang } = useLanguage();
   const [showLevelDialog, setShowLevelDialog] = useState(false);
@@ -48,24 +49,29 @@ export const Settings = () => {
     toast.success(t('common.success'));
   };
 
-  const handleClearProgress = () => {
-    if (window.confirm('Estas seguro de que quieres borrar todo tu progreso local?')) {
-      localStorage.removeItem('worklish_progress');
-      toast.success(t('common.success'));
-      window.location.reload();
+  const handleClearProgress = async () => {
+    if (window.confirm('¿Estás seguro de que quieres restablecer todo tu progreso a cero? (Esto se sincronizará en todos tus dispositivos)')) {
+      try {
+        localStorage.removeItem('worklish_progress');
+        await updateProfile({ progress: null });
+        toast.success(t('common.success'));
+        window.location.reload();
+      } catch (e) {
+        toast.error('Error al restablecer el progreso.');
+      }
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (window.confirm('Estas seguro? Esta accion no se puede deshacer.')) {
+    if (window.confirm('¿Estás seguro? Esta acción no se puede deshacer y se perderán todos tus datos permanentemente.')) {
       try {
-        await logout();
-        localStorage.removeItem('worklish_progress');
-        localStorage.removeItem('worklish_language_level');
+        await deleteAccount();
+        localStorage.clear();
         toast.success(t('common.success'));
         navigate('/');
        } catch (error) {
-        toast.error('Error al eliminar la cuenta');
+        console.error('Delete error:', error);
+        toast.error('Error al eliminar la cuenta. Por seguridad, las plataformas como Google requieren haber iniciado sesión recientemente para borrar una cuenta. Por favor, cierra sesión e ingresa de nuevo antes de intentarlo.');
       }
     }
   };
@@ -184,40 +190,89 @@ export const Settings = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { id: 'orion', name: 'Orion', desc: isEn ? 'Cheerful • Deeper voice' : 'Alegre • Voz más grave', color: 'bg-blue-500/20 text-blue-400' },
-              { id: 'pegasus', name: 'Pegasus', desc: isEn ? 'Calm • Deeper voice' : 'Calma • Voz más grave', color: 'bg-emerald-500/20 text-emerald-400' },
-              { id: 'ursa', name: 'Ursa', desc: isEn ? 'Engaged • Mid pitch' : 'Comprometida • Tono medio', color: 'bg-purple-500/20 text-purple-400' },
-              { id: 'nova', name: 'Nova', desc: isEn ? 'Subtle • Mid pitch' : 'Sutil • Tono medio', color: 'bg-orange-500/20 text-orange-400' },
-              { id: 'eclipse', name: 'Eclipse', desc: isEn ? 'Energetic • Mid pitch' : 'Energética • Tono medio', color: 'bg-[#06b6d4]/20 text-[#06b6d4]' }
+              { id: 'orion', name: 'Orion', desc: isEn ? 'Cheerful • Deeper voice' : 'Alegre • Voz más grave', color: 'bg-blue-500/20 text-blue-400', sample: isEn ? "Hello! I'm Orion, your English tutor. Let's practice together!" : "¡Hola! Soy Orion, tu tutor de inglés. ¡Practiquemos juntos!" },
+              { id: 'pegasus', name: 'Pegasus', desc: isEn ? 'Calm • Deeper voice' : 'Calma • Voz más grave', color: 'bg-emerald-500/20 text-emerald-400', sample: isEn ? "Hi there. I'm Pegasus. I'll guide you through your learning journey." : "Hola. Soy Pegasus. Te guiaré en tu camino de aprendizaje." },
+              { id: 'ursa', name: 'Ursa', desc: isEn ? 'Engaged • Mid pitch' : 'Comprometida • Tono medio', color: 'bg-purple-500/20 text-purple-400', sample: isEn ? "Hey! I'm Ursa. Ready to improve your professional English?" : "¡Hola! Soy Ursa. ¿Lista para mejorar tu inglés profesional?" },
+              { id: 'nova', name: 'Nova', desc: isEn ? 'Subtle • Mid pitch' : 'Sutil • Tono medio', color: 'bg-orange-500/20 text-orange-400', sample: isEn ? "Good day. I'm Nova. Let's work on your pronunciation skills." : "Buen día. Soy Nova. Trabajemos en tu pronunciación." },
+              { id: 'eclipse', name: 'Eclipse', desc: isEn ? 'Energetic • Mid pitch' : 'Energética • Tono medio', color: 'bg-[#06b6d4]/20 text-[#06b6d4]', sample: isEn ? "Hi! I'm Eclipse! Let's make learning English exciting!" : "¡Hola! ¡Soy Eclipse! ¡Hagamos que aprender inglés sea emocionante!" }
             ].map((voice) => (
               <motion.div
                 key={voice.id}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={async () => {
-                  try {
-                    await updateProfile({ preferred_voice: voice.id });
-                    toast.success(`Voz ${voice.name} seleccionada`);
-                  } catch (err) {
-                    toast.error('Error al guardar preferencia');
-                  }
-                }}
-                className={`flex flex-col p-4 rounded-2xl cursor-pointer transition-all border-2 ${
+                className={`flex flex-col p-4 rounded-2xl transition-all border-2 ${
                   (userProfile?.preferred_voice || 'orion') === voice.id 
                     ? 'border-[#7c3aed] bg-[#7c3aed]/10 shadow-[0_0_20px_rgba(124,58,237,0.2)]' 
                     : 'border-white/5 bg-white/[0.03] hover:bg-white/[0.08]'
                 }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-black text-white text-lg tracking-tight">{voice.name}</span>
-                  {(userProfile?.preferred_voice || 'orion') === voice.id && (
-                    <Sparkles size={16} className="text-[#06b6d4] animate-pulse" />
-                  )}
+                <div 
+                  onClick={async () => {
+                    try {
+                      await updateProfile({ preferred_voice: voice.id });
+                      toast.success(`Voz ${voice.name} seleccionada`);
+                    } catch (err) {
+                      toast.error('Error al guardar preferencia');
+                    }
+                  }}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-black text-white text-lg tracking-tight">{voice.name}</span>
+                    {(userProfile?.preferred_voice || 'orion') === voice.id && (
+                      <Sparkles size={16} className="text-[#06b6d4] animate-pulse" />
+                    )}
+                  </div>
+                  <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full self-start mb-1 ${voice.color}`}>
+                    {voice.desc.split(' • ')[0]}
+                  </span>
+                  <p className="text-slate-500 text-xs font-medium">{voice.desc.split(' • ')[1]}</p>
                 </div>
-                <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full self-start mb-1 ${voice.color}`}>
-                  {voice.desc.split(' • ')[0]}
-                </span>
-                <p className="text-slate-500 text-xs font-medium">{voice.desc.split(' • ')[1]}</p>
+                
+                {/* Audio Preview Button */}
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const btn = e.currentTarget;
+                    if (btn.dataset.playing === 'true') return;
+                    btn.dataset.playing = 'true';
+                    btn.querySelector('.play-icon').classList.add('hidden');
+                    btn.querySelector('.loading-icon').classList.remove('hidden');
+                    try {
+                      // Stop any currently playing audio
+                      document.querySelectorAll('audio[data-voice-preview]').forEach(a => { a.pause(); a.remove(); });
+                      const { generateSpeech } = await import('../lib/firebase');
+                      const { audioContent } = await generateSpeech(voice.sample, voice.id);
+                      const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+                      audio.setAttribute('data-voice-preview', 'true');
+                      btn.querySelector('.loading-icon').classList.add('hidden');
+                      btn.querySelector('.playing-icon').classList.remove('hidden');
+                      audio.onended = () => {
+                        btn.dataset.playing = 'false';
+                        btn.querySelector('.playing-icon').classList.add('hidden');
+                        btn.querySelector('.play-icon').classList.remove('hidden');
+                      };
+                      audio.onerror = () => {
+                        btn.dataset.playing = 'false';
+                        btn.querySelector('.playing-icon').classList.add('hidden');
+                        btn.querySelector('.play-icon').classList.remove('hidden');
+                      };
+                      await audio.play();
+                    } catch (err) {
+                      btn.dataset.playing = 'false';
+                      btn.querySelector('.loading-icon').classList.add('hidden');
+                      btn.querySelector('.playing-icon').classList.add('hidden');
+                      btn.querySelector('.play-icon').classList.remove('hidden');
+                      toast.error('Error al reproducir muestra');
+                    }
+                  }}
+                  className="mt-3 flex items-center justify-center gap-2 w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white text-xs font-bold transition-all active:scale-95"
+                >
+                  <Volume2 size={14} className="play-icon" />
+                  <Loader2 size={14} className="loading-icon hidden animate-spin" />
+                  <Volume2 size={14} className="playing-icon hidden animate-pulse text-[#06b6d4]" />
+                  <span>{isEn ? 'Play Sample' : 'Escuchar Muestra'}</span>
+                </button>
               </motion.div>
             ))}
           </div>
@@ -261,10 +316,16 @@ export const Settings = () => {
           
           <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl flex-wrap gap-4">
             <div>
-              <p className="text-white font-medium capitalize">
-                {t('settings.plan')} {userProfile?.subscription_status || 'Trial'}
+              <p className="text-white font-medium">
+                {t('settings.plan')} 
+                <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-white/10">
+                  {userProfile?.subscription_status === 'free' ? (isEn ? 'Free (Basic)' : 'Gratis (Básico)') :
+                   userProfile?.subscription_status === 'trial' ? (isEn ? 'Free Trial' : 'Prueba Gratuita') :
+                   userProfile?.subscription_status === 'pro' ? 'Pro Premium' :
+                   userProfile?.subscription_status === 'enterprise' ? 'Enterprise' : 'Gratis (Básico)'}
+                </span>
               </p>
-              {userProfile?.subscription_end && (
+              {userProfile?.subscription_end && userProfile.subscription_status !== 'free' && (
                 <div className="flex items-center gap-2 text-slate-400 text-sm mt-1">
                   <Calendar size={14} />
                   <span>
@@ -291,28 +352,13 @@ export const Settings = () => {
           </h2>
           
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <p className="text-white font-medium">{t('settings.exportProgress')}</p>
-                <p className="text-slate-400 text-sm">
-                  {t('settings.exportDesc')}
-                </p>
-              </div>
-              <Button 
-                onClick={handleExportProgress}
-                variant="outline"
-                className="border-white/10 text-slate-300 hover:bg-white/5 rounded-full ml-auto md:ml-0"
-              >
-                <Download size={18} className="mr-2" />
-                {t('settings.export')}
-              </Button>
-            </div>
+
 
             <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl flex-wrap gap-4">
               <div className="flex-1 min-w-[200px]">
-                <p className="text-white font-medium">{t('settings.clearProgress')}</p>
+                <p className="text-white font-medium">Restablecer Progreso</p>
                 <p className="text-slate-400 text-sm">
-                  {t('settings.clearDesc')}
+                  Borrará todo tu progreso orgánico en la nube (Rachas, puntajes).
                 </p>
               </div>
               <Button 
