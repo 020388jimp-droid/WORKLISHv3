@@ -1,81 +1,134 @@
-# WORKLISH - English Learning for Professionals
+# Worklish
 
-Aplicacion de aprendizaje de ingles profesional potenciada por IA, construida con Firebase y Google Cloud.
+**English practice for professionals.** A web and Android app where you write, speak and hold a
+conversation with an AI tutor that corrects grammar, pronunciation and word choice in job-related
+contexts.
 
-## Arquitectura
+[![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)](https://react.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Functions%20%7C%20Firestore-ffca28?logo=firebase&logoColor=black)](https://firebase.google.com)
+[![Gemini](https://img.shields.io/badge/Google-Gemini-4285f4?logo=google&logoColor=white)](https://ai.google.dev)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-- **Frontend:** React 19 + Tailwind CSS + Shadcn/UI
-- **Backend:** Firebase Cloud Functions (Node.js 20)
-- **Base de datos:** Firestore
-- **Autenticacion:** Firebase Authentication (Email/Password + Google)
-- **IA:** Google Gemini 1.5 Flash (texto, voz, conversacion)
-- **Hosting:** Firebase Hosting
+![Worklish landing page](docs/screenshots/landing.png)
 
-## Estructura del Proyecto
+## Live demo
+
+https://worklish-app-v2.firebaseapp.com
+
+## What it does
+
+| Feature | Description |
+|---|---|
+| **Text practice** | Write a work email or message and get corrections with explanations |
+| **Voice practice** | Speak an answer, get a transcript, pronunciation feedback and a score |
+| **Video call** | Simulated interview or meeting with the AI tutor, turn by turn |
+| **How to say** | Look up how a phrase is said in a professional context |
+| **Progress** | Practice history and per-skill scores on the dashboard |
+| **Subscriptions** | Free tier with limits, paid plans handled through RevenueCat |
+| **Android app** | Capacitor build with native text-to-speech and AdMob |
+
+The interface is in Spanish; the practice material is English, aimed at Spanish-speaking
+professionals.
+
+## Architecture
 
 ```
-worklish/
-├── firebase.json          # Configuracion Firebase
-├── .firebaserc            # Alias del proyecto
-├── firestore.rules        # Reglas de seguridad Firestore
-├── firestore.indexes.json # Indices de Firestore
-├── functions/             # Cloud Functions (backend)
-│   ├── index.js           # Logica de las funciones
-│   ├── package.json       # Dependencias
-│   └── .env               # Variables de entorno (Gemini API key)
-└── frontend/              # Aplicacion React
-    ├── src/
-    │   ├── components/    # Componentes reutilizables
-    │   ├── contexts/      # React Contexts (Auth, Language)
-    │   ├── lib/           # Firebase config, utilidades
-    │   └── pages/         # Paginas de la app
-    ├── package.json
-    └── public/
+React 19 SPA ──► Firebase Hosting
+      │
+      │  fetch + Firebase ID token
+      ▼
+Cloud Functions (Node.js 22, us-central1)
+      ├──► Google Gemini      → corrections, conversation, feedback
+      ├──► Cloud Text-to-Speech → narration for listening exercises
+      └──► Firestore          → users, practices, subscription state
 ```
 
-## Notas de Desarrollo y Despliegue
+The browser never talks to Gemini directly. Every AI call goes through a Cloud Function that
+verifies the Firebase ID token, applies the user's plan limits and keeps the API key on the server.
 
-### Arreglo del Layout del Dashboard (11/Mar/2026)
+More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-Se identificó y solucionó un problema de layout en el dashboard que afectaba la visibilidad y el comportamiento de la barra lateral.
+## Tech stack
 
-**Problema:**
-- La barra lateral no era fija y, en pantallas con altura reducida (zoom o laptops), no era posible acceder a los últimos elementos del menú, como "Cerrar Sesión", porque la barra lateral no tenía scroll.
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, React Router, Tailwind CSS, shadcn/ui, React Hook Form, Recharts |
+| Backend | Firebase Cloud Functions v2 (Node.js 22), Express-style handlers with CORS |
+| Database | Firestore with security rules scoped to the document owner |
+| Auth | Firebase Authentication — email/password and Google |
+| AI | Google Gemini (`@google/generative-ai`), Cloud Text-to-Speech |
+| Mobile | Capacitor 8, AdMob, native TTS, signed APK |
+| Payments | RevenueCat (`@revenuecat/purchases-capacitor`) |
+| Hosting | Firebase Hosting |
 
-**Solución Implementada:**
-1.  **Se restauraron los archivos a su estado original** para eliminar modificaciones fallidas (`git checkout -- <file>`).
-2.  **Se hizo la barra lateral desplazable:** En `frontend/src/components/Sidebar.jsx`, se añadió la clase `overflow-y-auto` de Tailwind CSS al elemento `<aside>` principal. Esto asegura que aparezca un scroll vertical si el contenido excede la altura de la pantalla.
+## Project structure
 
-### Puesta en Marcha y Solución de Problemas (11/Mar/2026)
+```
+frontend/                 React application
+  src/pages/              Landing, dashboard and the four practice modes
+  src/components/         Layout, sidebar and shared UI
+  src/contexts/           Auth and language state
+  src/lib/                Firebase client, API helpers, speech, ads, purchases
+  android/                Capacitor Android project
+functions/                Cloud Functions (all AI and data endpoints)
+docs/                     Architecture notes and migration guide
+firestore.rules           Access rules
+firestore.indexes.json    Composite indexes
+```
 
-Para lograr el despliegue completo y la correcta comunicación entre el frontend y el backend, se realizaron los siguientes ajustes críticos:
+## Getting started
 
-1.  **Conexión Frontend-Backend:**
-    *   Se creó y configuró el archivo `frontend/.env` con las variables de entorno de la configuración de Firebase (`firebaseConfig`). Este paso es **fundamental** para que la aplicación React sepa a qué proyecto de Firebase conectarse.
-
-2.  **Resolución de Conflictos de Dependencias (Frontend):**
-    *   Al ejecutar `npm install` en la carpeta `frontend`, la instalación falló debido a conflictos de versiones con dependencias pares (peer dependencies), principalmente relacionadas con `eslint`.
-    *   **Solución:** Se forzó la instalación utilizando la bandera `--legacy-peer-deps`, que ignora estos conflictos y permite completar la instalación. El comando ejecutado fue:
-        ```bash
-        npm install --prefix frontend --legacy-peer-deps
-        ```
-
-3.  **Configuración de `.gitignore`:**
-    *   Se detectó que el archivo `.gitignore` principal estaba vacío, lo que causaba que Git intentara subir archivos sensibles como `.env`.
-    *   **Solución:** Se creó un archivo `.gitignore` robusto en la raíz del proyecto para excluir carpetas como `node_modules`, archivos de compilación como `build`, y, muy importante, todos los archivos `.env`.
-
-4.  **Despliegue Final:**
-    *   Se compiló el frontend (`npm run build --prefix frontend`) y se desplegó en Firebase Hosting.
-    *   Se instalaron las dependencias del backend (`npm install --prefix functions`) y se desplegaron las Cloud Functions en Firebase.
-
-5.  **Commit y Documentación:**
-    *   Finalmente, se documentaron estos pasos en el `README.md` y se preparó el repositorio para un commit que refleja el estado 100% funcional del proyecto.
-
-## Desarrollo Local (Original)
-
-### Con Firebase Emulators
+Requirements: Node.js 20+ and a Firebase project with Auth, Firestore and Functions enabled.
 
 ```bash
-firebase emulators:start
-cd frontend && yarn start
+git clone https://github.com/020388jimp-droid/WORKLISHv3.git
+cd WORKLISHv3/frontend
+npm ci
 ```
+
+Create `frontend/.env`:
+
+```env
+REACT_APP_FUNCTIONS_URL=https://us-central1-worklish-app-v2.cloudfunctions.net
+```
+
+The Firebase web configuration is already in `frontend/src/lib/firebase.js`; it is a public
+client key and access is controlled by `firestore.rules`.
+
+```bash
+npm start        # development server on :3000
+npm run build    # production bundle
+```
+
+If `npm ci` fails on peer dependency conflicts, use `npm install --legacy-peer-deps`.
+
+### Cloud Functions
+
+```bash
+cd functions
+npm ci
+firebase functions:secrets:set GEMINI_API_KEY   # or a local .env for the emulator
+firebase emulators:start --only functions,firestore
+```
+
+`GEMINI_API_KEY` is read from the environment at runtime and is never committed.
+
+### Deploy
+
+```bash
+firebase deploy --only hosting,functions,firestore:rules
+```
+
+For the Android build, see `scripts/Limpiar-caches-android.ps1` for the cache cleanup used before
+`npx cap sync android`.
+
+## Security
+
+- `firestore.rules` only lets a user read and write their own documents.
+- AI keys live in Cloud Functions environment variables, not in the client bundle.
+- `.env`, `*.jks` and `google-services.json` are excluded by `.gitignore`.
+- The demo runs on the Firebase Spark/Blaze project `worklish-app-v2`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
